@@ -37,7 +37,7 @@ local SCRIPTS = {
     {"ESP_all", "https://raw.githubusercontent.com/setertop92222-beep/HeriCraft_HUB/refs/heads/main/HeriCraft_ESP.lua"},
 
     
-    {"ESP", "лох"},
+    {"ESP", "https://raw.githubusercontent.com/setertop92222-beep/HeriCraft_HUB/refs/heads/main/HeriCraft_menu_all_all_games.lua"},
     
     -- ============================================
     -- ДОБАВЛЯЙ НОВЫЕ СКРИПТЫ СЮДА:
