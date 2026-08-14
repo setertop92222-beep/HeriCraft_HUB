@@ -16,7 +16,7 @@ local CONFIG = {
     
     -- Ссылки на GitHub (RAW)
     Scripts = {
-        Menu = "https://raw.githubusercontent.com/ТВОЙ_АККАУНТ/HERRICRAFT_HUB/main/menu.lua",
+        Menu = "https://raw.githubusercontent.com/setertop92222-beep/HeriCraft_HUB/refs/heads/main/HeriCraft_MENU.lua",
     }
 }
 
