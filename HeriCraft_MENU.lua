@@ -28,13 +28,13 @@ local player = Players.LocalPlayer
 
 local SCRIPTS = {
     -- ===== СКРИПТ 1 =====
-    {"ESP с разделами", "https://raw.githubusercontent.com/ТВОЙ_АККАУНТ/HERRICRAFT_HUB/main/esp.lua"},
+    {"MENU_ALL_GAMES", "https://raw.githubusercontent.com/setertop92222-beep/HeriCraft_HUB/refs/heads/main/HeriCraft_menu_all_all_games.lua"},
     
     -- ===== СКРИПТ 2 =====
-    {"ТОЛЬКО AIMBOT", "https://raw.githubusercontent.com/ТВОЙ_АККАУНТ/HERRICRAFT_HUB/main/aimbot.lua"},
+    {"AIMBOT", "https://raw.githubusercontent.com/setertop92222-beep/HeriCraft_HUB/refs/heads/main/HeriCraft_AIMBOT.lua"},
     
     -- ===== СКРИПТ 3 =====
-    {"HERRICRAFT ESP + Aimbot", "https://raw.githubusercontent.com/ТВОЙ_АККАУНТ/HERRICRAFT_HUB/main/full.lua"},
+    {"ESP_all", "https://raw.githubusercontent.com/setertop92222-beep/HeriCraft_HUB/refs/heads/main/HeriCraft_ESP.lua"},
     
     -- ============================================
     -- ДОБАВЛЯЙ НОВЫЕ СКРИПТЫ СЮДА:
