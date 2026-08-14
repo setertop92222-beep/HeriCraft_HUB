@@ -12,7 +12,7 @@ local player = Players.LocalPlayer
 
 local CONFIG = {
     -- Пароль для входа (НЕ ВЫВОДИТСЯ В КОНСОЛЬ)
-    Password = "finsik1431243",
+    Password = "1213141516",
     
     -- Ссылки на GitHub (RAW)
     Scripts = {
