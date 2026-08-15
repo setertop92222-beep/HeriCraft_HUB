@@ -108,7 +108,7 @@ local function LoadPCList()
 end
 
 local function LoadMobileList()
-    local url = "https://raw.githubusercontent.com/setertop92222-beep/HeriCraft_HUB/refs/heads/main/mobile_list.lua"
+    local url = "https://raw.githubusercontent.com/setertop92222-beep/HeriCraft_HUB/refs/heads/main/mobale_list.lua"
     local success, result = pcall(function()
         return game:HttpGet(url)
     end)
