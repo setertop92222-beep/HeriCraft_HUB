@@ -1,100 +1,27 @@
 -- ============================================
--- HERRICRAFT HUB - ГЛАВНЫЙ СКРИПТ
+-- HERRICRAFT HUB - МЕНЮ ВХОДА (МНОГО ПАРОЛЕЙ)
 -- ============================================
 
 local Players = game:GetService("Players")
 local CoreGui = game:GetService("CoreGui")
 local TweenService = game:GetService("TweenService")
-local UserInputService = game:GetService("UserInputService")
-local HttpService = game:GetService("HttpService")
 local player = Players.LocalPlayer
 
 -- ============================================
--- ССЫЛКА НА ФАЙЛ С КЛЮЧАМИ (GitHub)
+-- ============================================
+-- НАСТРОЙКИ: ДОБАВЛЯЙ СВОИ ПАРОЛИ СЮДА
+-- ============================================
 -- ============================================
 
-local KEYS_URL = "https://raw.githubusercontent.com/setertop92222-beep/HeriCraft_HUB/refs/heads/main/keels.lua"
-
--- ============================================
--- ЗАГРУЗКА КЛЮЧЕЙ И HWID С GITHUB
--- ============================================
-
-local KeysData = {}
-
-local function LoadKeysFromGitHub()
-    local success, result = pcall(function()
-        return game:HttpGet(KEYS_URL)
-    end)
-    if success and result then
-        -- Безопасно выполняем загруженный код
-        local func, err = loadstring(result)
-        if func then
-            local loadedKeys = func()
-            if type(loadedKeys) == "table" then
-                KeysData = loadedKeys
-                print("✅ Загружено ключей: " .. #KeysData)
-                return true
-            else
-                print("❌ Загруженные данные не являются таблицей!")
-            end
-        else
-            print("❌ Ошибка выполнения keys.lua: " .. tostring(err))
-        end
-    else
-        print("❌ Ошибка загрузки keys.lua: " .. tostring(result))
-    end
-    return false
-end
-
--- ============================================
--- ПОЛУЧЕНИЕ HWID
--- ============================================
-
-local function GetHWID()
-    local userId = player.UserId
-    local platform = UserInputService:GetPlatform()
-    return tostring(userId) .. "_" .. tostring(platform)
-end
-
--- ============================================
--- ПОИСК КЛЮЧА В СПИСКЕ
--- ============================================
-
-local function FindKeyData(key)
-    if type(KeysData) ~= "table" then return nil end
-    for _, k in ipairs(KeysData) do
-        if k.key == key then
-            return k
-        end
-    end
-    return nil
-end
-
--- ============================================
--- ПРОВЕРКА HWID В СПИСКЕ
--- ============================================
-
-local function IsHWIDInList(key, hwid)
-    local keyData = FindKeyData(key)
-    if not keyData then
-        return false, "Ключ не найден!"
-    end
-    
-    if keyData.hwids and type(keyData.hwids) == "table" then
-        for _, savedHwid in ipairs(keyData.hwids) do
-            if savedHwid == hwid then
-                return true, "Доступ разрешён!"
-            end
-        end
-    end
-    
-    local currentActivations = keyData.hwids and #keyData.hwids or 0
-    if currentActivations >= (keyData.max_activations or 1) then
-        return false, "Достигнут лимит активаций! (" .. (keyData.max_activations or 1) .. ")"
-    end
-    
-    return false, "HWID не найден, но есть место"
-end
+local PASSWORDS = {
+    "2026",      -- Пароль 1
+    "005",       -- Пароль 2
+    "admin123",  -- Пароль 3
+    "qwerty",    -- Пароль 4
+    "hacker",    -- Пароль 5
+    -- Добавляй сколько хочешь:
+    -- "мой_пароль",
+}
 
 -- ============================================
 -- ЗАГРУЗКА МЕНЮ СКРИПТОВ
@@ -106,14 +33,9 @@ local function LoadScriptMenu()
         return game:HttpGet(url)
     end)
     if success and result then
-        local func, err = loadstring(result)
-        if func then
-            func()
-        else
-            print("❌ Ошибка загрузки menu.lua: " .. tostring(err))
-        end
+        loadstring(result)()
     else
-        print("❌ Ошибка загрузки меню: " .. tostring(result))
+        print("❌ Ошибка загрузки меню!")
     end
 end
 
@@ -122,6 +44,7 @@ end
 -- ============================================
 
 local function CreateLoginGUI()
+    -- Удаляем старые GUI
     for _, gui in ipairs(CoreGui:GetChildren()) do
         if gui.Name == "HericraftLogin" then
             gui:Destroy()
@@ -164,7 +87,7 @@ local function CreateLoginGUI()
     subtitle.Size = UDim2.new(1, 0, 0, 25)
     subtitle.Position = UDim2.new(0, 0, 0, 65)
     subtitle.BackgroundTransparency = 1
-    subtitle.Text = "🔑 Введите ключ для доступа"
+    subtitle.Text = "🔐 Введите пароль для доступа"
     subtitle.TextColor3 = Color3.fromRGB(160, 160, 160)
     subtitle.TextSize = 14
     subtitle.Font = Enum.Font.Gotham
@@ -178,7 +101,7 @@ local function CreateLoginGUI()
     codeBox.BackgroundColor3 = Color3.fromRGB(35, 35, 40)
     codeBox.BorderSizePixel = 0
     codeBox.Text = ""
-    codeBox.PlaceholderText = "🔑 Введите ключ..."
+    codeBox.PlaceholderText = "🔑 Введите пароль..."
     codeBox.TextColor3 = Color3.fromRGB(255, 255, 255)
     codeBox.PlaceholderColor3 = Color3.fromRGB(130, 130, 130)
     codeBox.TextSize = 18
@@ -239,37 +162,31 @@ local function CreateLoginGUI()
     end)
 
     -- ============================================
-    -- ПРОВЕРКА КЛЮЧА И HWID
+    -- ПРОВЕРКА ПАРОЛЯ
     -- ============================================
 
-    local function CheckKey()
-        local inputKey = codeBox.Text
-        local hwid = GetHWID()
+    local function CheckPassword()
+        local input = codeBox.Text
         
-        if inputKey == "" then
-            errorLabel.Text = "❌ Введите ключ!"
+        if input == "" then
+            errorLabel.Text = "❌ Введите пароль!"
             errorLabel.TextColor3 = Color3.fromRGB(255, 50, 50)
             task.wait(1)
             errorLabel.Text = ""
             return
         end
         
-        -- Проверяем, есть ли ключ в списке
-        local keyData = FindKeyData(inputKey)
-        if not keyData then
-            errorLabel.Text = "❌ Ключ не найден!"
-            errorLabel.TextColor3 = Color3.fromRGB(255, 50, 50)
-            codeBox.Text = ""
-            task.wait(1.5)
-            errorLabel.Text = ""
-            return
+        -- Проверяем, есть ли введённый пароль в списке
+        local found = false
+        for _, pass in ipairs(PASSWORDS) do
+            if input == pass then
+                found = true
+                break
+            end
         end
         
-        -- Проверяем, есть ли HWID в списке для этого ключа
-        local found, msg = IsHWIDInList(inputKey, hwid)
-        
         if found then
-            errorLabel.Text = "✅ " .. msg
+            errorLabel.Text = "✅ Пароль верный!"
             errorLabel.TextColor3 = Color3.fromRGB(0, 255, 0)
             confirmBtn.BackgroundColor3 = Color3.fromRGB(0, 200, 0)
             confirmBtn.Text = "✅ ОТКРЫТО!"
@@ -278,24 +195,17 @@ local function CreateLoginGUI()
             screenGui:Destroy()
             LoadScriptMenu()
         else
-            if string.find(msg, "Достигнут лимит") then
-                errorLabel.Text = "❌ " .. msg
-                errorLabel.TextColor3 = Color3.fromRGB(255, 50, 50)
-                codeBox.Text = ""
-                task.wait(1.5)
-                errorLabel.Text = ""
-            else
-                errorLabel.Text = "⚠️ " .. msg
-                errorLabel.TextColor3 = Color3.fromRGB(255, 200, 0)
-                task.wait(1.5)
-                errorLabel.Text = ""
-            end
+            errorLabel.Text = "❌ Неверный пароль!"
+            errorLabel.TextColor3 = Color3.fromRGB(255, 50, 50)
+            codeBox.Text = ""
+            task.wait(1.5)
+            errorLabel.Text = ""
         end
     end
 
-    confirmBtn.MouseButton1Click:Connect(CheckKey)
+    confirmBtn.MouseButton1Click:Connect(CheckPassword)
     codeBox.FocusLost:Connect(function(enterPressed)
-        if enterPressed then CheckKey() end
+        if enterPressed then CheckPassword() end
     end)
 end
 
@@ -304,12 +214,5 @@ end
 -- ============================================
 
 print("🏆 HERRICRAFT HUB загружен!")
-print("📥 Загрузка ключей...")
 
-local success = LoadKeysFromGitHub()
-if success then
-    print("📌 Введите ключ для доступа")
-    CreateLoginGUI()
-else
-    print("❌ Не удалось загрузить ключи! Проверьте интернет.")
-end
+CreateLoginGUI()
