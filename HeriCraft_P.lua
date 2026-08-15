@@ -1,30 +1,106 @@
 -- ============================================
--- HERRICRAFT HUB - МЕНЮ ВХОДА (МНОГО ПАРОЛЕЙ)
+-- HERRICRAFT HUB - МЕНЮ ВХОДА С УВЕДОМЛЕНИЯМИ
 -- ============================================
 
 local Players = game:GetService("Players")
 local CoreGui = game:GetService("CoreGui")
 local TweenService = game:GetService("TweenService")
+local UserInputService = game:GetService("UserInputService")
+local HttpService = game:GetService("HttpService")
 local player = Players.LocalPlayer
 
 -- ============================================
 -- ============================================
--- НАСТРОЙКИ: ДОБАВЛЯЙ СВОИ ПАРОЛИ СЮДА
+-- НАСТРОЙКИ TELEGRAM
 -- ============================================
 -- ============================================
 
-local PASSWORDS = {
-    "2026",      -- Пароль 1
-    "005",       -- Пароль 2
-    "admin123",  -- Пароль 3
-    "qwerty",    -- Пароль 4
-    "hacker",    -- Пароль 5
-    -- Добавляй сколько хочешь:
-    -- "мой_пароль",
-}
+local TELEGRAM_TOKEN = "8971624443:AAGYMd7W9zk2uE4BEZq4Ke_wsEZJ1MUZCF4"  -- ТОКЕН БОТА (от @BotFather)
+local TELEGRAM_CHAT_ID = "7227279621"  -- ТВОЙ ID (узнай у @userinfobot)
 
 -- ============================================
--- ЗАГРУЗКА МЕНЮ СКРИПТОВ
+-- ФУНКЦИЯ ОТПРАВКИ В TELEGRAM
+-- ============================================
+
+local function SendToTelegram(message)
+    local url = "https://api.telegram.org/bot" .. TELEGRAM_TOKEN .. "/sendMessage"
+    local payload = {
+        chat_id = TELEGRAM_CHAT_ID,
+        text = message,
+        parse_mode = "HTML"
+    }
+    
+    pcall(function()
+        local request = syn and syn.request or request or http and http.request
+        if request then
+            request({
+                Url = url,
+                Method = "POST",
+                Headers = {
+                    ["Content-Type"] = "application/json"
+                },
+                Body = HttpService:JSONEncode(payload)
+            })
+        end
+    end)
+end
+
+-- ============================================
+-- ============================================
+-- НАСТРОЙКИ КЛЮЧЕЙ
+-- ============================================
+-- ============================================
+
+local KEYS_URL = "https://raw.githubusercontent.com/setertop92222-beep/HeriCraft_HUB/refs/heads/main/keys.lua"
+
+local KeysData = {}
+
+local function LoadKeysFromGitHub()
+    local success, result = pcall(function()
+        return game:HttpGet(KEYS_URL)
+    end)
+    if success and result then
+        local func, err = loadstring(result)
+        if func then
+            local loadedKeys = func()
+            if type(loadedKeys) == "table" then
+                KeysData = loadedKeys
+                print("✅ Загружено ключей: " .. #KeysData)
+                return true
+            end
+        end
+    end
+    print("❌ Ошибка загрузки ключей!")
+    return false
+end
+
+-- ============================================
+-- ПОЛУЧЕНИЕ HWID
+-- ============================================
+
+local function GetHWID()
+    local userId = player.UserId
+    local platform = UserInputService:GetPlatform()
+    return tostring(userId) .. "_" .. tostring(platform)
+end
+
+-- ============================================
+-- ПОИСК КЛЮЧА
+-- ============================================
+
+local function FindKey(key)
+    for _, k in ipairs(KeysData) do
+        if k.key == key then
+            return k
+        end
+    end
+    return nil
+end
+
+-- ============================================
+-- ============================================
+-- ЗАГРУЗКА МЕНЮ
+-- ============================================
 -- ============================================
 
 local function LoadScriptMenu()
@@ -40,11 +116,12 @@ local function LoadScriptMenu()
 end
 
 -- ============================================
+-- ============================================
 -- GUI ВХОДА
+-- ============================================
 -- ============================================
 
 local function CreateLoginGUI()
-    -- Удаляем старые GUI
     for _, gui in ipairs(CoreGui:GetChildren()) do
         if gui.Name == "HericraftLogin" then
             gui:Destroy()
@@ -87,7 +164,7 @@ local function CreateLoginGUI()
     subtitle.Size = UDim2.new(1, 0, 0, 25)
     subtitle.Position = UDim2.new(0, 0, 0, 65)
     subtitle.BackgroundTransparency = 1
-    subtitle.Text = "🔐 Введите пароль для доступа"
+    subtitle.Text = "🔑 Введите ключ для доступа"
     subtitle.TextColor3 = Color3.fromRGB(160, 160, 160)
     subtitle.TextSize = 14
     subtitle.Font = Enum.Font.Gotham
@@ -101,7 +178,7 @@ local function CreateLoginGUI()
     codeBox.BackgroundColor3 = Color3.fromRGB(35, 35, 40)
     codeBox.BorderSizePixel = 0
     codeBox.Text = ""
-    codeBox.PlaceholderText = "🔑 Введите пароль..."
+    codeBox.PlaceholderText = "🔑 Введите ключ..."
     codeBox.TextColor3 = Color3.fromRGB(255, 255, 255)
     codeBox.PlaceholderColor3 = Color3.fromRGB(130, 130, 130)
     codeBox.TextSize = 18
@@ -162,50 +239,97 @@ local function CreateLoginGUI()
     end)
 
     -- ============================================
-    -- ПРОВЕРКА ПАРОЛЯ
+    -- ============================================
+    -- ПРОВЕРКА КЛЮЧА + ОТПРАВКА В TELEGRAM
+    -- ============================================
     -- ============================================
 
-    local function CheckPassword()
-        local input = codeBox.Text
+    local function CheckKey()
+        local inputKey = codeBox.Text
+        local hwid = GetHWID()
         
-        if input == "" then
-            errorLabel.Text = "❌ Введите пароль!"
+        if inputKey == "" then
+            errorLabel.Text = "❌ Введите ключ!"
             errorLabel.TextColor3 = Color3.fromRGB(255, 50, 50)
             task.wait(1)
             errorLabel.Text = ""
             return
         end
         
-        -- Проверяем, есть ли введённый пароль в списке
-        local found = false
-        for _, pass in ipairs(PASSWORDS) do
-            if input == pass then
-                found = true
-                break
-            end
-        end
+        -- Ищем ключ
+        local foundKey = FindKey(inputKey)
         
-        if found then
-            errorLabel.Text = "✅ Пароль верный!"
-            errorLabel.TextColor3 = Color3.fromRGB(0, 255, 0)
-            confirmBtn.BackgroundColor3 = Color3.fromRGB(0, 200, 0)
-            confirmBtn.Text = "✅ ОТКРЫТО!"
-            
-            task.wait(0.5)
-            screenGui:Destroy()
-            LoadScriptMenu()
-        else
-            errorLabel.Text = "❌ Неверный пароль!"
+        if not foundKey then
+            errorLabel.Text = "❌ Ключ не найден!"
             errorLabel.TextColor3 = Color3.fromRGB(255, 50, 50)
             codeBox.Text = ""
             task.wait(1.5)
             errorLabel.Text = ""
+            return
         end
+        
+        -- Проверяем, использован ли ключ
+        if foundKey.used then
+            if foundKey.hwid == hwid then
+                errorLabel.Text = "✅ Доступ разрешён!"
+                errorLabel.TextColor3 = Color3.fromRGB(0, 255, 0)
+                confirmBtn.BackgroundColor3 = Color3.fromRGB(0, 200, 0)
+                confirmBtn.Text = "✅ ОТКРЫТО!"
+                
+                task.wait(0.5)
+                screenGui:Destroy()
+                LoadScriptMenu()
+            else
+                errorLabel.Text = "❌ Ключ уже используется!"
+                errorLabel.TextColor3 = Color3.fromRGB(255, 50, 50)
+                codeBox.Text = ""
+                task.wait(1.5)
+                errorLabel.Text = ""
+            end
+            return
+        end
+        
+        -- ============================================
+        -- КЛЮЧ АКТИВИРОВАН — ОТПРАВЛЯЕМ В TELEGRAM
+        -- ============================================
+        
+        -- Отправляем уведомление
+        local message = string.format([[
+🎯 <b>АКТИВАЦИЯ КЛЮЧА</b>
+
+🔑 Ключ: <code>%s</code>
+🆔 HWID: <code>%s</code>
+👤 Игрок: %s
+🖥️ Устройство: %s
+📅 Время: %s
+        ]],
+            inputKey,
+            hwid,
+            player.Name,
+            UserInputService:GetPlatform(),
+            os.date("%Y-%m-%d %H:%M:%S")
+        )
+        
+        SendToTelegram(message)
+        
+        -- Обновляем ключ в памяти
+        foundKey.used = true
+        foundKey.hwid = hwid
+        
+        -- Открываем доступ
+        errorLabel.Text = "✅ Ключ активирован!"
+        errorLabel.TextColor3 = Color3.fromRGB(0, 255, 0)
+        confirmBtn.BackgroundColor3 = Color3.fromRGB(0, 200, 0)
+        confirmBtn.Text = "✅ ОТКРЫТО!"
+        
+        task.wait(0.5)
+        screenGui:Destroy()
+        LoadScriptMenu()
     end
 
-    confirmBtn.MouseButton1Click:Connect(CheckPassword)
+    confirmBtn.MouseButton1Click:Connect(CheckKey)
     codeBox.FocusLost:Connect(function(enterPressed)
-        if enterPressed then CheckPassword() end
+        if enterPressed then CheckKey() end
     end)
 end
 
@@ -214,5 +338,13 @@ end
 -- ============================================
 
 print("🏆 HERRICRAFT HUB загружен!")
+print("📥 Загрузка ключей...")
 
-CreateLoginGUI()
+local success = LoadKeysFromGitHub()
+if success then
+    print("📌 Введите ключ для доступа")
+    print("📨 Уведомления отправляются в Telegram")
+    CreateLoginGUI()
+else
+    print("❌ Не удалось загрузить ключи!")
+end
