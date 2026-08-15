@@ -1,5 +1,5 @@
 -- ============================================
--- [FPS] One Tap - ESP + AIMBOT
+-- [FPS] One Tap - ESP + AIMBOT (С ПОДДЕРЖКОЙ ИНС)
 -- ============================================
 
 local Players = game:GetService("Players")
@@ -24,6 +24,7 @@ local COLORS = {
     TextDark = Color3.fromRGB(150, 150, 150),
     Active = Color3.fromRGB(255, 215, 0),
     Inactive = Color3.fromRGB(60, 60, 60),
+    Item = Color3.fromRGB(255, 200, 0),
 }
 
 -- ============================================
@@ -35,6 +36,7 @@ local aimbotEnabled = false
 local menuOpen = false
 local isAiming = false
 local espObjects = {}
+local aimbotTarget = nil
 
 _G.AIM_AT = "Head"
 
@@ -111,6 +113,120 @@ local function CreateButton(parent, size, pos, text, callback)
 end
 
 -- ============================================
+-- ФУНКЦИИ ПОЛУЧЕНИЯ ОБЪЕКТОВ (ИГРОКИ + ИНС)
+-- ============================================
+
+local function GetAllTargets()
+    local targets = {}
+    
+    -- 1. Игроки
+    for _, plr in ipairs(Players:GetPlayers()) do
+        if plr ~= player then
+            local char = plr.Character
+            if char then
+                local hum = char:FindFirstChild("Humanoid")
+                if hum and hum.Health > 0 then
+                    local head = char:FindFirstChild("Head")
+                    if head then
+                        table.insert(targets, {
+                            type = "player",
+                            name = plr.Name,
+                            object = char,
+                            part = head,
+                            color = GetPlayerColor(plr)
+                        })
+                    end
+                end
+            end
+        end
+    end
+    
+    -- 2. Инструменты (инс) в руках игроков
+    for _, plr in ipairs(Players:GetPlayers()) do
+        if plr ~= player then
+            local char = plr.Character
+            if char then
+                -- Проверяем, что держит игрок в руках
+                local rightArm = char:FindFirstChild("Right Arm") or char:FindFirstChild("RightArm")
+                local leftArm = char:FindFirstChild("Left Arm") or char:FindFirstChild("LeftArm")
+                
+                local function checkArm(arm)
+                    if arm then
+                        for _, child in ipairs(arm:GetChildren()) do
+                            if child:IsA("Tool") or child:IsA("Part") or child:IsA("Model") then
+                                if child:FindFirstChildWhichIsA("Part") then
+                                    local part = child:FindFirstChildWhichIsA("Part")
+                                    if part then
+                                        table.insert(targets, {
+                                            type = "item",
+                                            name = child.Name,
+                                            object = child,
+                                            part = part,
+                                            color = COLORS.Item,
+                                            parentPlayer = plr.Name
+                                        })
+                                    end
+                                else
+                                    table.insert(targets, {
+                                        type = "item",
+                                        name = child.Name,
+                                        object = child,
+                                        part = child,
+                                        color = COLORS.Item,
+                                        parentPlayer = plr.Name
+                                    })
+                                end
+                            end
+                        end
+                    end
+                end
+                
+                checkArm(rightArm)
+                checkArm(leftArm)
+            end
+        end
+    end
+    
+    -- 3. Инструменты на земле (в workspace)
+    for _, obj in ipairs(Workspace:GetDescendants()) do
+        if obj:IsA("Tool") or obj:IsA("Part") then
+            if obj:IsA("Part") and obj.Parent and obj.Parent:IsA("Tool") then
+                obj = obj.Parent
+            end
+            if obj:IsA("Tool") and obj:FindFirstChildWhichIsA("Part") then
+                local part = obj:FindFirstChildWhichIsA("Part")
+                if part then
+                    -- Проверяем, не находится ли в руках игрока (чтобы не дублировать)
+                    local inHands = false
+                    for _, plr in ipairs(Players:GetPlayers()) do
+                        if plr ~= player then
+                            local char = plr.Character
+                            if char then
+                                local rightArm = char:FindFirstChild("Right Arm") or char:FindFirstChild("RightArm")
+                                local leftArm = char:FindFirstChild("Left Arm") or char:FindFirstChild("LeftArm")
+                                if rightArm and obj:IsDescendantOf(rightArm) then inHands = true end
+                                if leftArm and obj:IsDescendantOf(leftArm) then inHands = true end
+                            end
+                        end
+                    end
+                    if not inHands then
+                        table.insert(targets, {
+                            type = "item_ground",
+                            name = obj.Name,
+                            object = obj,
+                            part = part,
+                            color = COLORS.Item
+                        })
+                    end
+                end
+            end
+        end
+    end
+    
+    return targets
+end
+
+-- ============================================
 -- ESP ФУНКЦИИ
 -- ============================================
 
@@ -139,49 +255,57 @@ local function updateESP()
     clearESP()
     if not espEnabled then return end
     
-    for _, plr in ipairs(Players:GetPlayers()) do
-        if plr ~= player then
-            local char = plr.Character
-            if char and char:FindFirstChild("Humanoid") then
-                if not char:FindFirstChild("EspBox") then
-                    local esp = Instance.new("BoxHandleAdornment")
-                    esp.Adornee = char
-                    esp.ZIndex = 0
-                    esp.Size = Vector3.new(4, 5, 1)
-                    esp.Transparency = 0.5
-                    esp.Color3 = GetPlayerColor(plr) or COLORS.Border
-                    esp.AlwaysOnTop = true
-                    esp.Name = "EspBox"
-                    esp.Parent = char
-                    table.insert(espObjects, esp)
+    local targets = GetAllTargets()
+    
+    for _, target in ipairs(targets) do
+        if target.part and target.part.Parent then
+            -- Пропускаем объекты без Humanoid (кроме инструментов)
+            if target.type ~= "item" and target.type ~= "item_ground" then
+                local hum = target.object:FindFirstChild("Humanoid")
+                if not hum or hum.Health <= 0 then
+                    continue
                 end
+            end
+            
+            if not target.object:FindFirstChild("EspBox") then
+                local esp = Instance.new("BoxHandleAdornment")
+                esp.Adornee = target.object
+                esp.ZIndex = 0
+                esp.Size = target.type == "player" and Vector3.new(4, 5, 1) or Vector3.new(2, 2, 2)
+                esp.Transparency = target.type == "player" and 0.5 or 0.3
+                esp.Color3 = target.color or COLORS.Border
+                esp.AlwaysOnTop = true
+                esp.Name = "EspBox"
+                esp.Parent = target.object
+                table.insert(espObjects, esp)
             end
         end
     end
 end
 
 -- ============================================
--- AIMBOT ФУНКЦИИ
+-- AIMBOT ФУНКЦИИ (ИГРОКИ + ИНС)
 -- ============================================
 
-local function GetNearestPlayerToMouse()
+local function GetNearestTarget()
     local closest = nil
     local closestDist = math.huge
     
-    for _, plr in ipairs(Players:GetPlayers()) do
-        if plr == player then continue end
-        local char = plr.Character
-        if not char then continue end
-        local aimPart = char:FindFirstChild(_G.AIM_AT)
-        if not aimPart then continue end
-        
-        local screenPos, onScreen = camera:WorldToViewportPoint(aimPart.Position)
-        if not onScreen then continue end
-        
-        local dist = (Vector2.new(screenPos.X, screenPos.Y) - Vector2.new(mouse.X, mouse.Y)).Magnitude
-        if dist < closestDist then
-            closestDist = dist
-            closest = plr
+    local targets = GetAllTargets()
+    
+    for _, target in ipairs(targets) do
+        -- Целимся только в игроков и инструменты в руках
+        if target.type ~= "item_ground" then
+            if target.part then
+                local screenPos, onScreen = camera:WorldToViewportPoint(target.part.Position)
+                if onScreen then
+                    local dist = (Vector2.new(screenPos.X, screenPos.Y) - Vector2.new(mouse.X, mouse.Y)).Magnitude
+                    if dist < closestDist then
+                        closestDist = dist
+                        closest = target
+                    end
+                end
+            end
         end
     end
     
@@ -208,12 +332,9 @@ end)
 
 RunService.RenderStepped:Connect(function()
     if aimbotEnabled and isAiming then
-        local target = GetNearestPlayerToMouse()
-        if target and target.Character then
-            local aimPart = target.Character:FindFirstChild(_G.AIM_AT)
-            if aimPart then
-                camera.CFrame = CFrame.new(camera.CFrame.Position, aimPart.CFrame.Position)
-            end
+        local target = GetNearestTarget()
+        if target and target.part then
+            camera.CFrame = CFrame.new(camera.CFrame.Position, target.part.CFrame.Position)
         end
     end
 end)
@@ -235,8 +356,8 @@ local function CreateMenu()
     screenGui.ResetOnSpawn = false
 
     local mainFrame = CreateFrame(screenGui,
-        UDim2.new(0, 280, 0, 220),
-        UDim2.new(0.5, -140, 0.5, -110)
+        UDim2.new(0, 300, 0, 240),
+        UDim2.new(0.5, -150, 0.5, -120)
     )
     mainFrame.Visible = false
 
@@ -298,7 +419,7 @@ local function CreateMenu()
     CreateLabel(mainFrame,
         UDim2.new(1, 0, 0, 20),
         UDim2.new(0, 0, 0, 160),
-        "ПКМ - Aimbot",
+        "ПКМ - Aimbot (игроки + инс)",
         COLORS.TextDark,
         12
     )
@@ -420,6 +541,6 @@ end)
 
 print("🎯 [FPS] One Tap - ESP + Aimbot загружены!")
 print("📌 Кружок [FPS] → открыть меню")
-print("📌 ПКМ → Aimbot")
+print("📌 ПКМ → Aimbot (игроки + инс)")
 
 CreateMenu()
