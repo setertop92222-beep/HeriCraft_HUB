@@ -21,48 +21,15 @@ local COLORS = {
 
 -- ============================================
 -- ============================================
--- !!! СЮДА ДОБАВЛЯЙ СВОИ ССЫЛКИ ДЛЯ ПК !!!
+-- !!! СЮДА ДОБАВЛЯЙ СВОИ СКРИПТЫ ДЛЯ ПК !!!
 -- ============================================
 -- ============================================
 
 local SCRIPTS_PC = {
-    -- ===== СКРИПТ 1 =====
-    {
-        name = "[FPS] One Tap",
-        desc = "ESP + Aimbot (оптимизированный)",
-        icon = "🎯",
-        url = "https://raw.githubusercontent.com/setertop92222-beep/HeriCraft_HUB/refs/heads/main/onetap.lua"
-    },
-    -- ===== СКРИПТ 2 =====
-    {
-        name = "ESP с разделами",
-        desc = "ESP для игроков, ботов, монстров",
-        icon = "👾",
-        url = "https://raw.githubusercontent.com/setertop92222-beep/HeriCraft_HUB/refs/heads/main/esp_sections.lua"
-    },
-    -- ===== СКРИПТ 3 =====
-    {
-        name = "ESP",
-        desc = "Обычный ESP",
-        icon = "🎯",
-        url = "https://raw.githubusercontent.com/setertop92222-beep/HeriCraft_HUB/refs/heads/main/esp.lua"
-    },
-    -- ===== СКРИПТ 4 =====
-    {
-        name = "Aimbot",
-        desc = "Наведение на цель",
-        icon = "🎯",
-        url = "https://raw.githubusercontent.com/setertop92222-beep/HeriCraft_HUB/refs/heads/main/aimbot.lua"
-    },
-    -- ============================================
+    {"[FPS] One Tap", "https://raw.githubusercontent.com/setertop92222-beep/HeriCraft_HUB/refs/heads/main/%5BFPS%5D%20One%20Tap.lua"))()"},
     -- ДОБАВЛЯЙ НОВЫЕ СКРИПТЫ СЮДА:
     -- ============================================
-    -- {
-    --     name = "Название скрипта",
-    --     desc = "Описание",
-    --     icon = "🔥",
-    --     url = "https://ссылка_на_скрипт.lua"
-    -- },
+    -- {"Название скрипта", "https://ссылка_на_скрипт.lua"},
 }
 
 -- ============================================
@@ -138,7 +105,7 @@ local function CreateButton(parent, size, pos, text, callback)
 end
 
 -- ============================================
--- ЗАГРУЗЧИК СКРИПТОВ
+-- ЗАГРУЗЧИК
 -- ============================================
 
 local function LoadScript(url, name)
@@ -154,7 +121,7 @@ local function LoadScript(url, name)
 end
 
 -- ============================================
--- ФУНКЦИЯ ВОЗВРАТА
+-- ВОЗВРАТ
 -- ============================================
 
 local function ReturnToDeviceMenu()
@@ -164,7 +131,7 @@ local function ReturnToDeviceMenu()
         end
     end
     
-    local url = "https://raw.githubusercontent.com/setertop92222-beep/HeriCraft_HUB/refs/heads/main/device.lua"
+    local url = "https://raw.githubusercontent.com/setertop92222-beep/HeriCraft_HUB/refs/heads/main/devase.lua"
     local success, result = pcall(function()
         return game:HttpGet(url)
     end)
@@ -230,10 +197,10 @@ local function CreatePCList()
     -- СОЗДАНИЕ КНОПОК
     -- ============================================
 
-    local function CreateScriptButton(parent, yPos, icon, name, desc, url)
+    local function CreateScriptButton(parent, yPos, name, url)
         local btn = Instance.new("TextButton")
         btn.Parent = parent
-        btn.Size = UDim2.new(1, 0, 0, 55)
+        btn.Size = UDim2.new(1, 0, 0, 45)
         btn.Position = UDim2.new(0, 0, 0, yPos)
         btn.BackgroundColor3 = COLORS.Dark
         btn.BackgroundTransparency = 0
@@ -246,23 +213,11 @@ local function CreatePCList()
         btnCorner.CornerRadius = UDim.new(0, 10)
         btnCorner.Parent = btn
 
-        -- Иконка
-        local iconLabel = Instance.new("TextLabel")
-        iconLabel.Parent = btn
-        iconLabel.Size = UDim2.new(0, 40, 1, 0)
-        iconLabel.Position = UDim2.new(0, 10, 0, 0)
-        iconLabel.BackgroundTransparency = 1
-        iconLabel.Text = icon
-        iconLabel.TextColor3 = COLORS.Text
-        iconLabel.TextSize = 24
-        iconLabel.Font = Enum.Font.GothamBold
-        iconLabel.TextXAlignment = Enum.TextXAlignment.Center
-
         -- Название
         local nameLabel = Instance.new("TextLabel")
         nameLabel.Parent = btn
-        nameLabel.Size = UDim2.new(1, -60, 0, 22)
-        nameLabel.Position = UDim2.new(0, 55, 0, 5)
+        nameLabel.Size = UDim2.new(1, -70, 0, 45)
+        nameLabel.Position = UDim2.new(0, 15, 0, 0)
         nameLabel.BackgroundTransparency = 1
         nameLabel.Text = name
         nameLabel.TextColor3 = COLORS.Text
@@ -270,47 +225,35 @@ local function CreatePCList()
         nameLabel.Font = Enum.Font.GothamBold
         nameLabel.TextXAlignment = Enum.TextXAlignment.Left
 
-        -- Описание
-        local descLabel = Instance.new("TextLabel")
-        descLabel.Parent = btn
-        descLabel.Size = UDim2.new(1, -60, 0, 18)
-        descLabel.Position = UDim2.new(0, 55, 0, 28)
-        descLabel.BackgroundTransparency = 1
-        descLabel.Text = desc
-        descLabel.TextColor3 = COLORS.TextDark
-        descLabel.TextSize = 12
-        descLabel.Font = Enum.Font.Gotham
-        descLabel.TextXAlignment = Enum.TextXAlignment.Left
-
-        -- Статус
-        local statusLabel = Instance.new("TextLabel")
-        statusLabel.Parent = btn
-        statusLabel.Size = UDim2.new(0, 60, 0, 20)
-        statusLabel.Position = UDim2.new(1, -65, 0, 17)
-        statusLabel.BackgroundTransparency = 1
-        statusLabel.Text = "▶️"
-        statusLabel.TextColor3 = COLORS.TextDark
-        statusLabel.TextSize = 16
-        statusLabel.Font = Enum.Font.GothamBold
-        statusLabel.TextXAlignment = Enum.TextXAlignment.Center
+        -- Кнопка "Запуск"
+        local runLabel = Instance.new("TextLabel")
+        runLabel.Parent = btn
+        runLabel.Size = UDim2.new(0, 60, 0, 30)
+        runLabel.Position = UDim2.new(1, -70, 0, 7)
+        runLabel.BackgroundTransparency = 1
+        runLabel.Text = "▶️"
+        runLabel.TextColor3 = COLORS.TextDark
+        runLabel.TextSize = 16
+        runLabel.Font = Enum.Font.GothamBold
+        runLabel.TextXAlignment = Enum.TextXAlignment.Center
 
         btn.MouseEnter:Connect(function()
             TweenService:Create(btn, TweenInfo.new(0.2), {
                 BackgroundColor3 = Color3.fromRGB(40, 35, 0)
             }):Play()
-            statusLabel.TextColor3 = COLORS.Text
+            runLabel.TextColor3 = COLORS.Text
         end)
 
         btn.MouseLeave:Connect(function()
             TweenService:Create(btn, TweenInfo.new(0.2), {
                 BackgroundColor3 = COLORS.Dark
             }):Play()
-            statusLabel.TextColor3 = COLORS.TextDark
+            runLabel.TextColor3 = COLORS.TextDark
         end)
 
         btn.MouseButton1Click:Connect(function()
-            statusLabel.Text = "⏳"
-            statusLabel.TextColor3 = COLORS.Text
+            runLabel.Text = "⏳"
+            runLabel.TextColor3 = COLORS.Text
             btn.BackgroundColor3 = Color3.fromRGB(60, 50, 0)
             
             task.wait(0.3)
@@ -327,8 +270,8 @@ local function CreatePCList()
 
     local yPos = 0
     for _, script in ipairs(SCRIPTS_PC) do
-        CreateScriptButton(container, yPos, script.icon, script.name, script.desc, script.url)
-        yPos = yPos + 65
+        CreateScriptButton(container, yPos, script[1], script[2])
+        yPos = yPos + 55
     end
 
     container.Size = UDim2.new(1, 0, 0, yPos + 10)
