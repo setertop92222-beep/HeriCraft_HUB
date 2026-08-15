@@ -1,18 +1,19 @@
 -- ============================================
--- [FPS] One Tap - ESP С РАЗДЕЛАМИ
+-- [FPS] One Tap - ESP + AIMBOT (С БОТАМИ)
 -- ============================================
 
 local Players = game:GetService("Players")
-local RunService = game:GetService("RunService")
 local CoreGui = game:GetService("CoreGui")
+local TweenService = game:GetService("TweenService")
+local RunService = game:GetService("RunService")
 local UserInput = game:GetService("UserInputService")
 local Workspace = game:GetService("Workspace")
-local TweenService = game:GetService("TweenService")
 local player = Players.LocalPlayer
 local camera = workspace.CurrentCamera
+local mouse = player:GetMouse()
 
 -- ============================================
--- ЦВЕТА
+-- ЦВЕТА (ЧЁРНЫЙ + ЖЁЛТЫЙ)
 -- ============================================
 
 local COLORS = {
@@ -23,42 +24,8 @@ local COLORS = {
     TextDark = Color3.fromRGB(150, 150, 150),
     Active = Color3.fromRGB(255, 215, 0),
     Inactive = Color3.fromRGB(60, 60, 60),
-    
-    -- Цвета для разных типов существ
-    Enemy = Color3.fromRGB(255, 0, 0),
-    Ally = Color3.fromRGB(0, 255, 0),
-    Neutral = Color3.fromRGB(255, 255, 255),
-    Yourself = Color3.fromRGB(0, 150, 255),
-    Zombie = Color3.fromRGB(0, 255, 0),
-    Monster = Color3.fromRGB(255, 0, 255),
-    Boss = Color3.fromRGB(255, 215, 0),
-    Animal = Color3.fromRGB(255, 165, 0),
-    NPC = Color3.fromRGB(0, 255, 255),
-    Unknown = Color3.fromRGB(128, 128, 128),
-}
-
--- ============================================
--- НАСТРОЙКИ ESP
--- ============================================
-
-local ESP_Settings = {
-    Enabled = false,
-    
-    -- Игроки
-    ShowEnemy = true,
-    ShowAlly = true,
-    ShowNeutral = true,
-    ShowYourself = true,
-    
-    -- Монстры
-    ShowZombie = true,
-    ShowMonster = true,
-    ShowBoss = true,
-    ShowAnimal = true,
-    
-    -- NPC и другое
-    ShowNPC = true,
-    ShowUnknown = true,
+    Item = Color3.fromRGB(255, 200, 0),
+    Bot = Color3.fromRGB(255, 165, 0),
 }
 
 -- ============================================
@@ -66,8 +33,12 @@ local ESP_Settings = {
 -- ============================================
 
 local espEnabled = false
+local aimbotEnabled = false
 local menuOpen = false
+local isAiming = false
 local espObjects = {}
+
+_G.AIM_AT = "Head"
 
 -- ============================================
 -- GUI ФУНКЦИИ
@@ -145,157 +116,155 @@ end
 -- ОПРЕДЕЛЕНИЕ ТИПА СУЩЕСТВА
 -- ============================================
 
-local function GetEntityType(obj)
-    if not obj then return "Unknown" end
+local function IsBot(char)
+    if not char then return false end
     
-    local plr = Players:GetPlayerFromCharacter(obj)
+    -- Проверяем, является ли игроком
+    local plr = Players:GetPlayerFromCharacter(char)
     if plr then
-        return "Player"
+        return false
     end
     
-    local name = obj.Name:lower()
-    
-    -- Зомби
-    if name:find("zombie") or name:find("zomb") or name:find("walker") or 
-       name:find("infected") or name:find("undead") then
-        return "Zombie"
+    -- Проверяем наличие Humanoid
+    local hum = char:FindFirstChildOfClass("Humanoid")
+    if not hum then
+        return false
     end
     
-    -- Монстры
-    if name:find("monster") or name:find("demon") or name:find("devil") or
-       name:find("creature") or name:find("beast") or name:find("horror") then
-        return "Monster"
+    -- Проверяем наличие имени (у ботов часто есть имя)
+    if char.Name and char.Name ~= "" then
+        -- Если есть имя и это не игрок — считаем ботом
+        return true
     end
     
-    -- Боссы
-    if name:find("boss") or name:find("king") or name:find("lord") or
-       name:find("giant") or name:find("titan") or name:find("dragon") then
-        return "Boss"
-    end
-    
-    -- Животные
-    if name:find("dog") or name:find("cat") or name:find("wolf") or
-       name:find("bear") or name:find("deer") or name:find("rabbit") or
-       name:find("horse") or name:find("cow") or name:find("chicken") or
-       name:find("pig") or name:find("sheep") or name:find("fox") then
-        return "Animal"
-    end
-    
-    -- NPC
-    if name:find("npc") or name:find("villager") or name:find("guard") or
-       name:find("trader") or name:find("merchant") or name:find("citizen") or
-       name:find("shop") or name:find("quest") then
-        return "NPC"
-    end
-    
-    if obj:IsA("Model") and obj:FindFirstChildOfClass("Humanoid") then
-        return "Unknown"
-    end
-    
-    return "Unknown"
+    return true
 end
 
 -- ============================================
--- ПОЛУЧЕНИЕ ЦВЕТА ДЛЯ ТИПА
+-- ПОЛУЧЕНИЕ ЦВЕТА ДЛЯ СУЩЕСТВА
 -- ============================================
 
-local function GetEntityColor(obj)
-    if not obj then return COLORS.Unknown end
+local function GetEntityColor(char)
+    if not char then return COLORS.Border end
     
-    local entityType = GetEntityType(obj)
-    
-    if entityType == "Player" then
-        local plr = Players:GetPlayerFromCharacter(obj)
-        if plr then
-            if plr == player then return COLORS.Yourself end
-            if plr.Team and player.Team then
-                if plr.Team == player.Team then return COLORS.Ally end
-                return COLORS.Enemy
-            end
-            return COLORS.Neutral
-        end
-    end
-    
-    local typeColors = {
-        Zombie = COLORS.Zombie,
-        Monster = COLORS.Monster,
-        Boss = COLORS.Boss,
-        Animal = COLORS.Animal,
-        NPC = COLORS.NPC,
-        Unknown = COLORS.Unknown,
-    }
-    
-    return typeColors[entityType] or COLORS.Unknown
-end
-
--- ============================================
--- ПРОВЕРКА НУЖНО ЛИ ПОКАЗЫВАТЬ
--- ============================================
-
-local function ShouldShowEntity(obj)
-    if not obj then return false end
-    if not ESP_Settings.Enabled then return false end
-    
-    local plr = Players:GetPlayerFromCharacter(obj)
+    local plr = Players:GetPlayerFromCharacter(char)
     if plr then
-        if plr == player then
-            return ESP_Settings.ShowYourself
-        end
+        if plr == player then return Color3.fromRGB(0, 150, 255) end
         if plr.Team and player.Team then
             if plr.Team == player.Team then
-                return ESP_Settings.ShowAlly
+                return Color3.fromRGB(0, 255, 0)
             else
-                return ESP_Settings.ShowEnemy
+                return Color3.fromRGB(255, 0, 0)
             end
         end
-        return ESP_Settings.ShowNeutral
+        return Color3.fromRGB(255, 255, 255)
     end
     
-    local entityType = GetEntityType(obj)
-    if entityType == "Zombie" then return ESP_Settings.ShowZombie end
-    if entityType == "Monster" then return ESP_Settings.ShowMonster end
-    if entityType == "Boss" then return ESP_Settings.ShowBoss end
-    if entityType == "Animal" then return ESP_Settings.ShowAnimal end
-    if entityType == "NPC" then return ESP_Settings.ShowNPC end
-    if entityType == "Unknown" then return ESP_Settings.ShowUnknown end
+    -- Если это бот — оранжевый
+    if IsBot(char) then
+        return COLORS.Bot
+    end
     
-    return false
+    return COLORS.Border
 end
 
 -- ============================================
--- ПОИСК ВСЕХ СУЩЕСТВ
+-- ПОЛУЧЕНИЕ ВСЕХ ЦЕЛЕЙ (ИГРОКИ + БОТЫ)
 -- ============================================
 
-local function FindAllEntities()
-    local entities = {}
+local function GetAllTargets()
+    local targets = {}
     local seen = {}
     
-    -- Ищем игроков
+    -- 1. Игроки
     for _, plr in ipairs(Players:GetPlayers()) do
-        if plr.Character and plr.Character:FindFirstChildOfClass("Humanoid") then
+        if plr ~= player then
             local char = plr.Character
-            if not seen[char] then
-                seen[char] = true
-                table.insert(entities, char)
-            end
-        end
-    end
-    
-    -- Ищем всех существ в workspace
-    for _, obj in ipairs(Workspace:GetDescendants()) do
-        if obj:IsA("Model") and obj:FindFirstChildOfClass("Humanoid") then
-            if not seen[obj] then
-                -- Проверяем, не является ли игроком
-                local isPlayer = Players:GetPlayerFromCharacter(obj)
-                if not isPlayer then
-                    seen[obj] = true
-                    table.insert(entities, obj)
+            if char then
+                local hum = char:FindFirstChild("Humanoid")
+                if hum and hum.Health > 0 then
+                    local head = char:FindFirstChild("Head")
+                    if head then
+                        if not seen[char] then
+                            seen[char] = true
+                            table.insert(targets, {
+                                type = "player",
+                                name = plr.Name,
+                                object = char,
+                                part = head,
+                                color = GetEntityColor(char),
+                                isBot = false
+                            })
+                        end
+                    end
                 end
             end
         end
     end
     
-    return entities
+    -- 2. Боты и другие существа (NPC, монстры, зомби)
+    for _, obj in ipairs(Workspace:GetDescendants()) do
+        if obj:IsA("Model") and obj:FindFirstChildOfClass("Humanoid") then
+            if not seen[obj] then
+                local plr = Players:GetPlayerFromCharacter(obj)
+                if not plr then
+                    local hum = obj:FindFirstChildOfClass("Humanoid")
+                    if hum and hum.Health > 0 then
+                        local head = obj:FindFirstChild("Head")
+                        if head then
+                            seen[obj] = true
+                            table.insert(targets, {
+                                type = "bot",
+                                name = obj.Name,
+                                object = obj,
+                                part = head,
+                                color = COLORS.Bot,
+                                isBot = true
+                            })
+                        end
+                    end
+                end
+            end
+        end
+    end
+    
+    -- 3. Инструменты (для ESP)
+    for _, obj in ipairs(Workspace:GetDescendants()) do
+        if obj:IsA("Tool") or obj:IsA("Part") then
+            if obj:IsA("Part") and obj.Parent and obj.Parent:IsA("Tool") then
+                obj = obj.Parent
+            end
+            if obj:IsA("Tool") and obj:FindFirstChildWhichIsA("Part") then
+                local part = obj:FindFirstChildWhichIsA("Part")
+                if part then
+                    local inHands = false
+                    for _, plr in ipairs(Players:GetPlayers()) do
+                        if plr ~= player then
+                            local char = plr.Character
+                            if char then
+                                local rightArm = char:FindFirstChild("Right Arm") or char:FindFirstChild("RightArm")
+                                local leftArm = char:FindFirstChild("Left Arm") or char:FindFirstChild("LeftArm")
+                                if rightArm and obj:IsDescendantOf(rightArm) then inHands = true end
+                                if leftArm and obj:IsDescendantOf(leftArm) then inHands = true end
+                            end
+                        end
+                    end
+                    if not inHands then
+                        table.insert(targets, {
+                            type = "item_ground",
+                            name = obj.Name,
+                            object = obj,
+                            part = part,
+                            color = COLORS.Item,
+                            isBot = false
+                        })
+                    end
+                end
+            end
+        end
+    end
+    
+    return targets
 end
 
 -- ============================================
@@ -311,169 +280,180 @@ local function clearESP()
     espObjects = {}
 end
 
-local function createESPForEntity(entity)
-    if not entity then return end
-    if not ESP_Settings.Enabled then return end
-    if not ShouldShowEntity(entity) then return end
-    if not entity:FindFirstChildOfClass("Humanoid") then return end
-    
-    if entity:FindFirstChild("EspBox") then
-        entity.EspBox:Destroy()
-    end
-    
-    local color = GetEntityColor(entity)
-    
-    -- Разный размер для разных типов
-    local size = Vector3.new(4, 5, 1)
-    local entityType = GetEntityType(entity)
-    if entityType == "Unknown" or entityType == "Animal" then
-        size = Vector3.new(2, 2, 1)
-    end
-    
-    local esp = Instance.new("BoxHandleAdornment")
-    esp.Adornee = entity
-    esp.ZIndex = 0
-    esp.Size = size
-    esp.Transparency = 0.5
-    esp.Color3 = color
-    esp.AlwaysOnTop = true
-    esp.Name = "EspBox"
-    esp.Parent = entity
-    table.insert(espObjects, esp)
-end
-
 local function updateESP()
     clearESP()
-    if not ESP_Settings.Enabled then return end
+    if not espEnabled then return end
     
-    local entities = FindAllEntities()
-    for _, entity in ipairs(entities) do
-        if ShouldShowEntity(entity) then
-            createESPForEntity(entity)
+    local targets = GetAllTargets()
+    
+    for _, target in ipairs(targets) do
+        if target.part and target.part.Parent then
+            if not target.object:FindFirstChild("EspBox") then
+                local esp = Instance.new("BoxHandleAdornment")
+                esp.Adornee = target.object
+                esp.ZIndex = 0
+                
+                if target.type == "player" then
+                    esp.Size = Vector3.new(4, 5, 1)
+                    esp.Transparency = 0.5
+                elseif target.type == "bot" then
+                    esp.Size = Vector3.new(3, 4, 1)
+                    esp.Transparency = 0.4
+                else
+                    esp.Size = Vector3.new(2, 2, 1)
+                    esp.Transparency = 0.3
+                end
+                
+                esp.Color3 = target.color or COLORS.Border
+                esp.AlwaysOnTop = true
+                esp.Name = "EspBox"
+                esp.Parent = target.object
+                table.insert(espObjects, esp)
+            end
         end
     end
 end
+
+-- ============================================
+-- AIMBOT ФУНКЦИИ (ИГРОКИ + БОТЫ)
+-- ============================================
+
+local function GetNearestTarget()
+    local closest = nil
+    local closestDist = math.huge
+    
+    local targets = GetAllTargets()
+    
+    for _, target in ipairs(targets) do
+        -- Целимся в игроков и ботов (не в инструменты)
+        if target.type == "player" or target.type == "bot" then
+            if target.part then
+                local screenPos, onScreen = camera:WorldToViewportPoint(target.part.Position)
+                if onScreen then
+                    local dist = (Vector2.new(screenPos.X, screenPos.Y) - Vector2.new(mouse.X, mouse.Y)).Magnitude
+                    if dist < closestDist then
+                        closestDist = dist
+                        closest = target
+                    end
+                end
+            end
+        end
+    end
+    
+    return closest
+end
+
+-- ============================================
+-- AIMBOT ЛОГИКА
+-- ============================================
+
+UserInput.InputBegan:Connect(function(input, gameProcessed)
+    if gameProcessed then return end
+    if aimbotEnabled and input.UserInputType == Enum.UserInputType.MouseButton2 then
+        isAiming = true
+    end
+end)
+
+UserInput.InputEnded:Connect(function(input, gameProcessed)
+    if gameProcessed then return end
+    if aimbotEnabled and input.UserInputType == Enum.UserInputType.MouseButton2 then
+        isAiming = false
+    end
+end)
+
+RunService.RenderStepped:Connect(function()
+    if aimbotEnabled and isAiming then
+        local target = GetNearestTarget()
+        if target and target.part then
+            camera.CFrame = CFrame.new(camera.CFrame.Position, target.part.CFrame.Position)
+        end
+    end
+end)
 
 -- ============================================
 -- МЕНЮ
 -- ============================================
 
-local function CreateESPMenu()
+local function CreateMenu()
     for _, gui in ipairs(CoreGui:GetChildren()) do
-        if gui.Name == "ESPSections" then
+        if gui.Name == "OneTapFPS" then
             gui:Destroy()
         end
     end
     
     local screenGui = Instance.new("ScreenGui")
-    screenGui.Name = "ESPSections"
+    screenGui.Name = "OneTapFPS"
     screenGui.Parent = CoreGui
     screenGui.ResetOnSpawn = false
 
     local mainFrame = CreateFrame(screenGui,
-        UDim2.new(0, 320, 0, 420),
-        UDim2.new(0.5, -160, 0.5, -210)
+        UDim2.new(0, 300, 0, 240),
+        UDim2.new(0.5, -150, 0.5, -120)
     )
     mainFrame.Visible = false
 
     CreateLabel(mainFrame,
         UDim2.new(1, 0, 0, 40),
         UDim2.new(0, 0, 0, 5),
-        "👾 ESP С РАЗДЕЛАМИ",
+        "[FPS] One Tap",
         COLORS.Border,
         20
     )
 
-    -- Главный переключатель ESP
-    local mainBtn = CreateButton(mainFrame,
-        UDim2.new(0.9, 0, 0, 30),
-        UDim2.new(0.05, 0, 0, 50),
+    -- Кнопка ESP
+    local espBtn = CreateButton(mainFrame,
+        UDim2.new(0.8, 0, 0, 35),
+        UDim2.new(0.1, 0, 0, 55),
         "> ESP: ВЫКЛ"
     )
-    mainBtn.TextColor3 = COLORS.Inactive
-    mainBtn.BorderColor3 = COLORS.Inactive
+    espBtn.TextColor3 = COLORS.Inactive
+    espBtn.BorderColor3 = COLORS.Inactive
 
-    mainBtn.MouseButton1Click:Connect(function()
-        ESP_Settings.Enabled = not ESP_Settings.Enabled
-        if ESP_Settings.Enabled then
-            mainBtn.Text = "> ESP: ВКЛ"
-            mainBtn.TextColor3 = COLORS.Active
-            mainBtn.BorderColor3 = COLORS.Active
+    espBtn.MouseButton1Click:Connect(function()
+        espEnabled = not espEnabled
+        if espEnabled then
+            espBtn.Text = "> ESP: ВКЛ"
+            espBtn.TextColor3 = COLORS.Active
+            espBtn.BorderColor3 = COLORS.Active
             updateESP()
         else
-            mainBtn.Text = "> ESP: ВЫКЛ"
-            mainBtn.TextColor3 = COLORS.Inactive
-            mainBtn.BorderColor3 = COLORS.Inactive
+            espBtn.Text = "> ESP: ВЫКЛ"
+            espBtn.TextColor3 = COLORS.Inactive
+            espBtn.BorderColor3 = COLORS.Inactive
             clearESP()
         end
     end)
 
-    -- Разделитель
-    local divider = Instance.new("Frame")
-    divider.Parent = mainFrame
-    divider.Size = UDim2.new(0.9, 0, 0, 1)
-    divider.Position = UDim2.new(0.05, 0, 0, 88)
-    divider.BackgroundColor3 = COLORS.Border
-    divider.BackgroundTransparency = 0.5
-
-    CreateLabel(mainFrame,
-        UDim2.new(0.9, 0, 0, 20),
-        UDim2.new(0.05, 0, 0, 95),
-        "👤 Игроки",
-        COLORS.Text,
-        14
+    -- Кнопка Aimbot
+    local aimBtn = CreateButton(mainFrame,
+        UDim2.new(0.8, 0, 0, 35),
+        UDim2.new(0.1, 0, 0, 105),
+        "> AIMBOT: ВЫКЛ"
     )
+    aimBtn.TextColor3 = COLORS.Inactive
+    aimBtn.BorderColor3 = COLORS.Inactive
 
-    -- Кнопки игроков
-    local function createSectionButton(parent, yPos, text, settingKey, color)
-        local btn = CreateButton(parent,
-            UDim2.new(0.8, 0, 0, 28),
-            UDim2.new(0.1, 0, 0, yPos),
-            text .. " ✅"
-        )
-        btn.BackgroundColor3 = Color3.fromRGB(0, 180, 80)
-        btn.BorderColor3 = COLORS.Border
-        btn.TextColor3 = COLORS.Text
-        
-        btn.MouseButton1Click:Connect(function()
-            ESP_Settings[settingKey] = not ESP_Settings[settingKey]
-            if ESP_Settings[settingKey] then
-                btn.Text = text .. " ✅"
-                btn.BackgroundColor3 = Color3.fromRGB(0, 180, 80)
-            else
-                btn.Text = text .. " ❌"
-                btn.BackgroundColor3 = COLORS.Dark
-            end
-            updateESP()
-        end)
-        return btn
-    end
+    aimBtn.MouseButton1Click:Connect(function()
+        aimbotEnabled = not aimbotEnabled
+        if aimbotEnabled then
+            aimBtn.Text = "> AIMBOT: ВКЛ"
+            aimBtn.TextColor3 = COLORS.Active
+            aimBtn.BorderColor3 = COLORS.Active
+        else
+            aimBtn.Text = "> AIMBOT: ВЫКЛ"
+            aimBtn.TextColor3 = COLORS.Inactive
+            aimBtn.BorderColor3 = COLORS.Inactive
+        end
+    end)
 
-    createSectionButton(mainFrame, 120, "🔴 Враги", "ShowEnemy")
-    createSectionButton(mainFrame, 153, "🟢 Союзники", "ShowAlly")
-    createSectionButton(mainFrame, 186, "⚪ Нейтральные", "ShowNeutral")
-    createSectionButton(mainFrame, 219, "🔵 Ты", "ShowYourself")
-
-    -- Разделитель
-    local divider2 = Instance.new("Frame")
-    divider2.Parent = mainFrame
-    divider2.Size = UDim2.new(0.9, 0, 0, 1)
-    divider2.Position = UDim2.new(0.05, 0, 0, 255)
-    divider2.BackgroundColor3 = COLORS.Border
-    divider2.BackgroundTransparency = 0.5
-
+    -- Информация
     CreateLabel(mainFrame,
-        UDim2.new(0.9, 0, 0, 20),
-        UDim2.new(0.05, 0, 0, 262),
-        "👾 Монстры",
-        COLORS.Text,
-        14
+        UDim2.new(1, 0, 0, 20),
+        UDim2.new(0, 0, 0, 155),
+        "ПКМ - Aimbot (игроки + боты)",
+        COLORS.TextDark,
+        12
     )
-
-    createSectionButton(mainFrame, 287, "🧟 Зомби", "ShowZombie")
-    createSectionButton(mainFrame, 320, "👹 Монстры", "ShowMonster")
-    createSectionButton(mainFrame, 353, "👑 Боссы", "ShowBoss")
-    createSectionButton(mainFrame, 386, "🐾 Животные", "ShowAnimal")
 
     -- Кнопка закрытия
     local closeBtn = CreateButton(mainFrame,
@@ -484,7 +464,7 @@ local function CreateESPMenu()
             mainFrame.Visible = false
             menuOpen = false
             if circleBtn then
-                circleBtn.Text = "ESP"
+                circleBtn.Text = "[FPS]"
                 circleBtn.BorderColor3 = COLORS.Border
                 circleBtn.TextColor3 = COLORS.TextDark
             end
@@ -494,9 +474,12 @@ local function CreateESPMenu()
     closeBtn.BorderColor3 = Color3.fromRGB(255, 50, 50)
     closeBtn.TextColor3 = Color3.fromRGB(255, 50, 50)
 
+    -- ============================================
     -- КРУЖОК
+    -- ============================================
+
     local circleGui = Instance.new("ScreenGui")
-    circleGui.Name = "ESPSectionsCircle"
+    circleGui.Name = "OneTapCircle"
     circleGui.Parent = CoreGui
     circleGui.ResetOnSpawn = false
 
@@ -507,7 +490,7 @@ local function CreateESPMenu()
     circleBtn.BackgroundTransparency = 0
     circleBtn.BorderSizePixel = 2
     circleBtn.BorderColor3 = COLORS.Border
-    circleBtn.Text = "ESP"
+    circleBtn.Text = "[FPS]"
     circleBtn.TextColor3 = COLORS.TextDark
     circleBtn.TextSize = 11
     circleBtn.Font = Enum.Font.GothamBold
@@ -555,11 +538,11 @@ local function CreateESPMenu()
         menuOpen = not menuOpen
         mainFrame.Visible = menuOpen
         if menuOpen then
-            circleBtn.Text = "MENU"
+            circleBtn.Text = "[MENU]"
             circleBtn.BorderColor3 = COLORS.Active
             circleBtn.TextColor3 = COLORS.Active
         else
-            circleBtn.Text = "ESP"
+            circleBtn.Text = "[FPS]"
             circleBtn.BorderColor3 = COLORS.Border
             circleBtn.TextColor3 = COLORS.TextDark
         end
@@ -574,11 +557,11 @@ local function CreateESPMenu()
 end
 
 -- ============================================
--- АВТООБНОВЛЕНИЕ
+-- АВТООБНОВЛЕНИЕ ESP
 -- ============================================
 
 RunService.Heartbeat:Connect(function()
-    if ESP_Settings.Enabled then
+    if espEnabled then
         updateESP()
     end
 end)
@@ -587,8 +570,10 @@ end)
 -- ЗАПУСК
 -- ============================================
 
-print("👾 ESP С РАЗДЕЛАМИ загружен!")
-print("📌 Кружок ESP → открыть меню")
-print("📌 Включай разделы по отдельности")
+print("🎯 [FPS] One Tap - ESP + Aimbot загружены!")
+print("📌 ESP: показывает игроков и ботов")
+print("📌 Aimbot: наводит на игроков и ботов")
+print("📌 Кружок [FPS] → открыть меню")
+print("📌 ПКМ → Aimbot")
 
-CreateESPMenu()
+CreateMenu()
