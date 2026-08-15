@@ -135,7 +135,7 @@ local function ReturnToHub()
     aimbotEnabled = false
     
     -- Загружаем хаб
-    local hubUrl = "https://raw.githubusercontent.com/setertop92222-beep/HeriCraft_HUB/refs/heads/main/hub.lua"
+    local hubUrl = "https://raw.githubusercontent.com/setertop92222-beep/HeriCraft_HUB/refs/heads/main/HeriCraft_MENU.lua"
     local success, result = pcall(function()
         return game:HttpGet(hubUrl)
     end)
