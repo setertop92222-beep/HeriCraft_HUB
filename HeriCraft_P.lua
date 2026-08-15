@@ -6,24 +6,32 @@ local Players = game:GetService("Players")
 local CoreGui = game:GetService("CoreGui")
 local TweenService = game:GetService("TweenService")
 local UserInputService = game:GetService("UserInputService")
+local HttpService = game:GetService("HttpService")
 local player = Players.LocalPlayer
 
 -- ============================================
 -- ============================================
--- НАСТРОЙКИ
+-- НАСТРОЙКИ GITHUB
 -- ============================================
 -- ============================================
 
--- ССЫЛКА НА ФАЙЛ С КЛЮЧАМИ (GitHub)
-local KEYS_URL = "https://raw.githubusercontent.com/setertop92222-beep/HeriCraft_HUB/refs/heads/main/keys.lua"
+-- ТВОИ ДАННЫЕ:
+local GITHUB_TOKEN = "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"  -- Personal Access Token
+local REPO_OWNER = "setertop92222-beep"
+local REPO_NAME = "HeriCraft_HUB"
+local FILE_PATH = "keys.lua"
+local BRANCH = "main"
 
--- ФАЙЛ ДЛЯ ХРАНЕНИЯ АКТИВИРОВАННЫХ КЛЮЧЕЙ (ЛОКАЛЬНО)
-local HWID_FILE = "Hericraft_Activations.txt"
+local KEYS_URL = "https://raw.githubusercontent.com/" .. REPO_OWNER .. "/" .. REPO_NAME .. "/" .. BRANCH .. "/" .. FILE_PATH
+local API_URL = "https://api.github.com/repos/" .. REPO_OWNER .. "/" .. REPO_NAME .. "/contents/" .. FILE_PATH
 
 -- ============================================
--- ЗАГРУЗКА КЛЮЧЕЙ С GITHUB
+-- ============================================
+-- ФУНКЦИИ ДЛЯ РАБОТЫ С GITHUB
+-- ============================================
 -- ============================================
 
+-- 1. ЗАГРУЗКА КЛЮЧЕЙ
 local KeysData = {}
 
 local function LoadKeysFromGitHub()
@@ -45,55 +53,53 @@ local function LoadKeysFromGitHub()
     return false
 end
 
--- ============================================
--- ============================================
--- РАБОТА С ЛОКАЛЬНЫМ ФАЙЛОМ HWID
--- ============================================
--- ============================================
-
-local function LoadActivations()
-    local data = {}
-    local success, content = pcall(function()
-        return readfile(HWID_FILE)
+-- 2. ОБНОВЛЕНИЕ ФАЙЛА НА GITHUB
+local function UpdateKeysOnGitHub(newContent)
+    -- Сначала получаем SHA файла
+    local success, result = pcall(function()
+        return game:HttpGet(API_URL)
     end)
-    if success and content then
-        for entry in string.gmatch(content, "([^;]+)") do
-            local key, hwid = string.match(entry, "([^:]+):([^:]+)")
-            if key and hwid then
-                data[key] = hwid
-            end
-        end
-    end
-    return data
-end
-
-local function SaveActivation(key, hwid)
-    local data = LoadActivations()
-    data[key] = hwid
+    if not success then return false end
     
-    local content = ""
-    for k, v in pairs(data) do
-        content = content .. k .. ":" .. v .. ";"
-    end
-    pcall(function()
-        writefile(HWID_FILE, content)
+    local data = HttpService:JSONDecode(result)
+    local sha = data.sha
+    
+    -- Формируем запрос
+    local payload = {
+        message = "Обновление HWID",
+        content = HttpService:Base64Encode(newContent),
+        sha = sha,
+        branch = BRANCH
+    }
+    
+    local headers = {
+        ["Authorization"] = "token " .. GITHUB_TOKEN,
+        ["Content-Type"] = "application/json"
+    }
+    
+    local updateSuccess, updateResult = pcall(function()
+        return syn.request({
+            Url = API_URL,
+            Method = "PUT",
+            Headers = headers,
+            Body = HttpService:JSONEncode(payload)
+        })
     end)
-    print("✅ Сохранено: " .. key .. " → " .. hwid)
+    
+    return updateSuccess
 end
 
 -- ============================================
--- ПОЛУЧЕНИЕ HWID
+-- ============================================
+-- ОСНОВНАЯ ЛОГИКА
+-- ============================================
 -- ============================================
 
 local function GetHWID()
     local userId = player.UserId
     local platform = UserInputService:GetPlatform()
     return tostring(userId) .. "_" .. tostring(platform)
-end
-
--- ============================================
--- ПОИСК КЛЮЧА
--- ============================================
+}
 
 local function FindKey(key)
     for _, k in ipairs(KeysData) do
@@ -104,20 +110,13 @@ local function FindKey(key)
     return nil
 end
 
--- ============================================
--- ============================================
--- ЗАГРУЗКА МЕНЮ
--- ============================================
--- ============================================
-
 local function LoadScriptMenu()
-    local url = "https://raw.githubusercontent.com/setertop92222-beep/HeriCraft_HUB/refs/heads/main/HeriCraft_MENU.lua"
+    local url = "https://raw.githubusercontent.com/" .. REPO_OWNER .. "/" .. REPO_NAME .. "/" .. BRANCH .. "/menu.lua"
     local success, result = pcall(function()
         return game:HttpGet(url)
     end)
     if success and result then
         loadstring(result)()
-        print("✅ Меню загружено!")
     else
         print("❌ Ошибка загрузки меню!")
     end
@@ -264,7 +263,7 @@ local function CreateLoginGUI()
             return
         end
         
-        -- 1. Проверяем, есть ли ключ в списке
+        -- 1. Проверяем, есть ли ключ
         local foundKey = FindKey(inputKey)
         if not foundKey then
             errorLabel.Text = "❌ Ключ не найден!"
@@ -275,13 +274,10 @@ local function CreateLoginGUI()
             return
         end
         
-        -- 2. Проверяем локальный файл активаций
-        local activations = LoadActivations()
-        local savedHwid = activations[inputKey]
-        
-        if savedHwid then
-            if savedHwid == hwid then
-                -- Тот же пользователь — доступ разрешён
+        -- 2. Проверяем, использован ли ключ
+        if foundKey.used and foundKey.hwid ~= "" then
+            if foundKey.hwid == hwid then
+                -- Тот же пользователь
                 errorLabel.Text = "✅ Доступ разрешён!"
                 errorLabel.TextColor3 = Color3.fromRGB(0, 255, 0)
                 confirmBtn.BackgroundColor3 = Color3.fromRGB(0, 200, 0)
@@ -292,7 +288,7 @@ local function CreateLoginGUI()
                 LoadScriptMenu()
                 return
             else
-                -- Ключ уже используется другим
+                -- Ключ занят другим
                 errorLabel.Text = "❌ Ключ уже используется!"
                 errorLabel.TextColor3 = Color3.fromRGB(255, 50, 50)
                 codeBox.Text = ""
@@ -303,21 +299,40 @@ local function CreateLoginGUI()
         end
         
         -- 3. Ключ свободен — активируем
-        SaveActivation(inputKey, hwid)
+        -- Обновляем данные в памяти
+        foundKey.used = true
+        foundKey.hwid = hwid
         
-        errorLabel.Text = "✅ Ключ активирован!"
-        errorLabel.TextColor3 = Color3.fromRGB(0, 255, 0)
-        confirmBtn.BackgroundColor3 = Color3.fromRGB(0, 200, 0)
-        confirmBtn.Text = "✅ ОТКРЫТО!"
+        -- Формируем новое содержимое keys.lua
+        local newContent = "return {\n"
+        for _, k in ipairs(KeysData) do
+            newContent = newContent .. "    { key = \"" .. k.key .. "\", used = " .. tostring(k.used) .. ", hwid = \"" .. (k.hwid or "") .. "\" },\n"
+        end
+        newContent = newContent .. "}"
         
-        -- Сообщаем в консоль
-        print("🔑 Активирован ключ: " .. inputKey)
-        print("🆔 HWID: " .. hwid)
-        print("👤 Игрок: " .. player.Name)
+        -- Обновляем на GitHub
+        local success = UpdateKeysOnGitHub(newContent)
         
-        task.wait(0.5)
-        screenGui:Destroy()
-        LoadScriptMenu()
+        if success then
+            errorLabel.Text = "✅ Ключ активирован!"
+            errorLabel.TextColor3 = Color3.fromRGB(0, 255, 0)
+            confirmBtn.BackgroundColor3 = Color3.fromRGB(0, 200, 0)
+            confirmBtn.Text = "✅ ОТКРЫТО!"
+            
+            print("🔑 Активирован ключ: " .. inputKey)
+            print("🆔 HWID: " .. hwid)
+            print("👤 Игрок: " .. player.Name)
+            
+            task.wait(0.5)
+            screenGui:Destroy()
+            LoadScriptMenu()
+        else
+            errorLabel.Text = "❌ Ошибка сохранения!"
+            errorLabel.TextColor3 = Color3.fromRGB(255, 50, 50)
+            codeBox.Text = ""
+            task.wait(1.5)
+            errorLabel.Text = ""
+        end
     end
 
     confirmBtn.MouseButton1Click:Connect(CheckKey)
