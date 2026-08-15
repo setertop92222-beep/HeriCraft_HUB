@@ -1,34 +1,16 @@
 -- ============================================
--- HERRICRAFT HUB - МЕНЮ ВХОДА С HWID
+-- HERRICRAFT HUB - МЕНЮ ВХОДА
 -- ============================================
 
 local Players = game:GetService("Players")
 local CoreGui = game:GetService("CoreGui")
 local TweenService = game:GetService("TweenService")
-local UserInputService = game:GetService("UserInputService")
-local HttpService = game:GetService("HttpService")
 local player = Players.LocalPlayer
 
--- ============================================
--- ============================================
--- НАСТРОЙКИ
--- ============================================
--- ============================================
-
-local REPO_OWNER = "setertop92222-beep"
-local REPO_NAME = "HeriCraft_HUB"
-local BRANCH = "main"
-
--- ССЫЛКА НА ФАЙЛ С КЛЮЧАМИ (GitHub)
-local KEYS_URL = "https://raw.githubusercontent.com/" .. REPO_OWNER .. "/" .. REPO_NAME .. "/" .. BRANCH .. "/keys.lua"
-
--- ЛОКАЛЬНЫЙ ФАЙЛ ДЛЯ АКТИВАЦИЙ
-local ACTIVATIONS_FILE = "Hericraft_Activations.txt"
+local KEYS_URL = "https://raw.githubusercontent.com/setertop92222-beep/HeriCraft_HUB/refs/heads/main/keys.lua"
 
 -- ============================================
--- ============================================
--- ЗАГРУЗКА КЛЮЧЕЙ С GITHUB
--- ============================================
+-- ЗАГРУЗКА КЛЮЧЕЙ
 -- ============================================
 
 local KeysData = {}
@@ -53,81 +35,37 @@ local function LoadKeysFromGitHub()
 end
 
 -- ============================================
--- ============================================
--- РАБОТА С ЛОКАЛЬНЫМ ФАЙЛОМ АКТИВАЦИЙ
--- ============================================
+-- ПРОВЕРКА КЛЮЧА
 -- ============================================
 
-local function LoadActivations()
-    local data = {}
-    local success, content = pcall(function()
-        return readfile(ACTIVATIONS_FILE)
-    end)
-    if success and content then
-        for entry in string.gmatch(content, "([^;]+)") do
-            local key, hwid = string.match(entry, "([^:]+):([^:]+)")
-            if key and hwid then
-                data[key] = hwid
-            end
-        end
-    end
-    return data
-end
-
-local function SaveActivation(key, hwid)
-    local data = LoadActivations()
-    data[key] = hwid
-    
-    local content = ""
-    for k, v in pairs(data) do
-        content = content .. k .. ":" .. v .. ";"
-    end
-    pcall(function()
-        writefile(ACTIVATIONS_FILE, content)
-    end)
-    print("✅ Сохранено локально: " .. key .. " → " .. hwid)
-    return true
-end
-
--- ============================================
--- ============================================
--- ОСНОВНАЯ ЛОГИКА
--- ============================================
--- ============================================
-
-local function GetHWID()
-    local userId = player.UserId
-    local platform = UserInputService:GetPlatform()
-    return tostring(userId) .. "_" .. tostring(platform)
-end
-
-local function FindKey(key)
+local function CheckKey(inputKey)
     for _, k in ipairs(KeysData) do
-        if k.key == key then
-            return k
+        if k == inputKey then
+            return true
         end
     end
-    return nil
+    return false
 end
 
 -- ============================================
--- ============================================
--- GUI ВХОДА
--- ============================================
+-- ЗАГРУЗКА МЕНЮ
 -- ============================================
 
 local function LoadScriptMenu()
-    local url = "https://raw.githubusercontent.com/" .. REPO_OWNER .. "/" .. REPO_NAME .. "/" .. BRANCH .. "/HeriCraft_MENU.lua"
+    local url = "https://raw.githubusercontent.com/setertop92222-beep/HeriCraft_HUB/refs/heads/main/HeriCraft_MENU.lua"
     local success, result = pcall(function()
         return game:HttpGet(url)
     end)
     if success and result then
         loadstring(result)()
-        print("✅ Меню загружено!")
     else
         print("❌ Ошибка загрузки меню!")
     end
 end
+
+-- ============================================
+-- GUI ВХОДА
+-- ============================================
 
 local function CreateLoginGUI()
     for _, gui in ipairs(CoreGui:GetChildren()) do
@@ -166,6 +104,7 @@ local function CreateLoginGUI()
     title.Font = Enum.Font.GothamBold
     title.TextXAlignment = Enum.TextXAlignment.Center
 
+    -- Подзаголовок
     local subtitle = Instance.new("TextLabel")
     subtitle.Parent = mainFrame
     subtitle.Size = UDim2.new(1, 0, 0, 25)
@@ -177,6 +116,7 @@ local function CreateLoginGUI()
     subtitle.Font = Enum.Font.Gotham
     subtitle.TextXAlignment = Enum.TextXAlignment.Center
 
+    -- Поле ввода
     local codeBox = Instance.new("TextBox")
     codeBox.Parent = mainFrame
     codeBox.Size = UDim2.new(0.6, 0, 0, 45)
@@ -196,6 +136,7 @@ local function CreateLoginGUI()
     codeCorner.CornerRadius = UDim.new(0, 10)
     codeCorner.Parent = codeBox
 
+    -- Кнопка входа
     local confirmBtn = Instance.new("TextButton")
     confirmBtn.Parent = mainFrame
     confirmBtn.Size = UDim2.new(0.4, 0, 0, 45)
@@ -211,6 +152,7 @@ local function CreateLoginGUI()
     btnCorner.CornerRadius = UDim.new(0, 10)
     btnCorner.Parent = confirmBtn
 
+    -- Ошибка
     local errorLabel = Instance.new("TextLabel")
     errorLabel.Parent = mainFrame
     errorLabel.Size = UDim2.new(1, 0, 0, 25)
@@ -222,6 +164,7 @@ local function CreateLoginGUI()
     errorLabel.Font = Enum.Font.Gotham
     errorLabel.TextXAlignment = Enum.TextXAlignment.Center
 
+    -- Кнопка закрытия
     local closeBtn = Instance.new("TextButton")
     closeBtn.Parent = mainFrame
     closeBtn.Size = UDim2.new(0, 32, 0, 32)
@@ -242,14 +185,11 @@ local function CreateLoginGUI()
     end)
 
     -- ============================================
-    -- ============================================
     -- ПРОВЕРКА КЛЮЧА
     -- ============================================
-    -- ============================================
 
-    local function CheckKey()
+    local function CheckEnteredKey()
         local inputKey = codeBox.Text
-        local hwid = GetHWID()
         
         if inputKey == "" then
             errorLabel.Text = "❌ Введите ключ!"
@@ -259,80 +199,28 @@ local function CreateLoginGUI()
             return
         end
         
-        -- 1. Проверяем, есть ли ключ в списке
-        local foundKey = FindKey(inputKey)
-        if not foundKey then
-            errorLabel.Text = "❌ Ключ не найден!"
+        if CheckKey(inputKey) then
+            errorLabel.Text = "✅ Ключ верный!"
+            errorLabel.TextColor3 = Color3.fromRGB(0, 255, 0)
+            confirmBtn.BackgroundColor3 = Color3.fromRGB(0, 200, 0)
+            confirmBtn.Text = "✅ ОТКРЫТО!"
+            
+            task.wait(0.5)
+            screenGui:Destroy()
+            LoadScriptMenu()
+        else
+            errorLabel.Text = "❌ Неверный ключ!"
             errorLabel.TextColor3 = Color3.fromRGB(255, 50, 50)
             codeBox.Text = ""
             task.wait(1.5)
             errorLabel.Text = ""
-            return
         end
-        
-        -- 2. Проверяем локальный файл активаций
-        local activations = LoadActivations()
-        local savedHwid = activations[inputKey]
-        
-        if savedHwid then
-            if savedHwid == hwid then
-                -- Тот же пользователь — доступ разрешён
-                errorLabel.Text = "✅ Доступ разрешён!"
-                errorLabel.TextColor3 = Color3.fromRGB(0, 255, 0)
-                confirmBtn.BackgroundColor3 = Color3.fromRGB(0, 200, 0)
-                confirmBtn.Text = "✅ ОТКРЫТО!"
-                
-                task.wait(0.5)
-                screenGui:Destroy()
-                LoadScriptMenu()
-                return
-            else
-                errorLabel.Text = "❌ Ключ уже используется!"
-                errorLabel.TextColor3 = Color3.fromRGB(255, 50, 50)
-                codeBox.Text = ""
-                task.wait(1.5)
-                errorLabel.Text = ""
-                return
-            end
-        end
-        
-        -- 3. Ключ свободен — активируем локально
-        SaveActivation(inputKey, hwid)
-        
-        errorLabel.Text = "✅ Ключ активирован!"
-        errorLabel.TextColor3 = Color3.fromRGB(0, 255, 0)
-        confirmBtn.BackgroundColor3 = Color3.fromRGB(0, 200, 0)
-        confirmBtn.Text = "✅ ОТКРЫТО!"
-        
-        print("🔑 Активирован ключ: " .. inputKey)
-        print("🆔 HWID: " .. hwid)
-        print("👤 Игрок: " .. player.Name)
-        
-        task.wait(0.5)
-        screenGui:Destroy()
-        LoadScriptMenu()
     end
 
-    confirmBtn.MouseButton1Click:Connect(CheckKey)
+    confirmBtn.MouseButton1Click:Connect(CheckEnteredKey)
     codeBox.FocusLost:Connect(function(enterPressed)
-        if enterPressed then CheckKey() end
+        if enterPressed then CheckEnteredKey() end
     end)
-end
-
--- ============================================
--- ПРОВЕРКА
--- ============================================
-
-local function TestConnection()
-    print("🔍 Проверка загрузки ключей...")
-    local success = LoadKeysFromGitHub()
-    if success then
-        print("✅ Ключи загружены!")
-        return true
-    else
-        print("❌ Не удалось загрузить ключи!")
-        return false
-    end
 end
 
 -- ============================================
