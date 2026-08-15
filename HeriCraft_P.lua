@@ -63,6 +63,43 @@ end
 
 -- ============================================
 -- ============================================
+-- УНИВЕРСАЛЬНАЯ ФУНКЦИЯ ЗАПРОСА
+-- ============================================
+-- ============================================
+
+local function SendRequest(url, method, headers, body)
+    -- Пробуем разные способы отправки запросов
+    local requestFunc = syn and syn.request or request or http and http.request or http_request
+    
+    if not requestFunc then
+        print("❌ Ваш эксплойт не поддерживает HTTP-запросы!")
+        return nil
+    end
+    
+    local args = {
+        Url = url,
+        Method = method or "GET",
+        Headers = headers or {},
+    }
+    
+    if body then
+        args.Body = body
+    end
+    
+    local success, result = pcall(function()
+        return requestFunc(args)
+    end)
+    
+    if success then
+        return result
+    else
+        print("❌ Ошибка запроса: " .. tostring(result))
+        return nil
+    end
+end
+
+-- ============================================
+-- ============================================
 -- ФУНКЦИИ ДЛЯ РАБОТЫ С GITHUB
 -- ============================================
 -- ============================================
@@ -91,15 +128,13 @@ end
 
 -- 2. ПОЛУЧИТЬ SHA ФАЙЛА
 local function GetFileSHA()
-    local success, result = pcall(function()
-        return game:HttpGet(API_URL)
-    end)
-    if not success then 
+    local result = SendRequest(API_URL, "GET")
+    if not result then 
         print("❌ Не удалось получить SHA!")
         return nil 
     end
     
-    local data = HttpService:JSONDecode(result)
+    local data = HttpService:JSONDecode(result.Body)
     return data.sha
 end
 
@@ -111,7 +146,6 @@ local function UpdateKeysOnGitHub(newContent)
         return false
     end
     
-    -- ИСПОЛЬЗУЕМ РУЧНУЮ ФУНКЦИЮ BASE64
     local encodedContent = Base64Encode(newContent)
     
     local payload = {
@@ -126,20 +160,17 @@ local function UpdateKeysOnGitHub(newContent)
         ["Content-Type"] = "application/json"
     }
     
-    local updateSuccess, updateResult = pcall(function()
-        return syn.request({
-            Url = API_URL,
-            Method = "PUT",
-            Headers = headers,
-            Body = HttpService:JSONEncode(payload)
-        })
-    end)
+    local result = SendRequest(API_URL, "PUT", headers, HttpService:JSONEncode(payload))
     
-    if updateSuccess then
+    if result and result.StatusCode == 200 then
         print("✅ Файл обновлён на GitHub!")
         return true
     else
-        print("❌ Ошибка обновления: " .. tostring(updateResult))
+        print("❌ Ошибка обновления!")
+        if result then
+            print("   Статус: " .. tostring(result.StatusCode))
+            print("   Ответ: " .. tostring(result.Body))
+        end
         return false
     end
 end
@@ -172,7 +203,6 @@ end
 -- ============================================
 
 local function LoadScriptMenu()
-    -- ИСПРАВЛЕНА ССЫЛКА (ДОБАВЛЕН СЛЭШ)
     local url = "https://raw.githubusercontent.com/" .. REPO_OWNER .. "/" .. REPO_NAME .. "/" .. BRANCH .. "/HeriCraft_MENU.lua"
     local success, result = pcall(function()
         return game:HttpGet(url)
@@ -405,10 +435,6 @@ local function TestGitHubConnection()
         return true
     else
         print("❌ Не удалось подключиться к GitHub!")
-        print("   Проверьте:")
-        print("   1. Токен (должен начинаться с ghp_)")
-        print("   2. Название репозитория")
-        print("   3. Название ветки (main или master)")
         return false
     end
 end
