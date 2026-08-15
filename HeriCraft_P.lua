@@ -52,7 +52,7 @@ end
 -- ============================================
 
 local function LoadScriptMenu()
-    local url = "https://raw.githubusercontent.com/setertop92222-beep/HeriCraft_HUB/refs/heads/main/HeriCraft_MENU.lua"
+    local url = "https://raw.githubusercontent.com/setertop92222-beep/HeriCraft_HUB/refs/heads/main/devase.lua"
     local success, result = pcall(function()
         return game:HttpGet(url)
     end)
