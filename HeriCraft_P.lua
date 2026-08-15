@@ -1,57 +1,28 @@
 -- ============================================
--- HERRICRAFT HUB - МЕНЮ ВХОДА С УВЕДОМЛЕНИЯМИ
+-- HERRICRAFT HUB - МЕНЮ ВХОДА С HWID
 -- ============================================
 
 local Players = game:GetService("Players")
 local CoreGui = game:GetService("CoreGui")
 local TweenService = game:GetService("TweenService")
 local UserInputService = game:GetService("UserInputService")
-local HttpService = game:GetService("HttpService")
 local player = Players.LocalPlayer
 
 -- ============================================
 -- ============================================
--- НАСТРОЙКИ TELEGRAM
+-- НАСТРОЙКИ
 -- ============================================
 -- ============================================
 
-local TELEGRAM_TOKEN = "8971624443:AAGYMd7W9zk2uE4BEZq4Ke_wsEZJ1MUZCF4"  -- ТОКЕН БОТА (от @BotFather)
-local TELEGRAM_CHAT_ID = "7227279621"  -- ТВОЙ ID (узнай у @userinfobot)
-
--- ============================================
--- ФУНКЦИЯ ОТПРАВКИ В TELEGRAM
--- ============================================
-
-local function SendToTelegram(message)
-    local url = "https://api.telegram.org/bot" .. TELEGRAM_TOKEN .. "/sendMessage"
-    local payload = {
-        chat_id = TELEGRAM_CHAT_ID,
-        text = message,
-        parse_mode = "HTML"
-    }
-    
-    pcall(function()
-        local request = syn and syn.request or request or http and http.request
-        if request then
-            request({
-                Url = url,
-                Method = "POST",
-                Headers = {
-                    ["Content-Type"] = "application/json"
-                },
-                Body = HttpService:JSONEncode(payload)
-            })
-        end
-    end)
-end
-
--- ============================================
--- ============================================
--- НАСТРОЙКИ КЛЮЧЕЙ
--- ============================================
--- ============================================
-
+-- ССЫЛКА НА ФАЙЛ С КЛЮЧАМИ (GitHub)
 local KEYS_URL = "https://raw.githubusercontent.com/setertop92222-beep/HeriCraft_HUB/refs/heads/main/keys.lua"
+
+-- ФАЙЛ ДЛЯ ХРАНЕНИЯ АКТИВИРОВАННЫХ КЛЮЧЕЙ (ЛОКАЛЬНО)
+local HWID_FILE = "Hericraft_Activations.txt"
+
+-- ============================================
+-- ЗАГРУЗКА КЛЮЧЕЙ С GITHUB
+-- ============================================
 
 local KeysData = {}
 
@@ -72,6 +43,42 @@ local function LoadKeysFromGitHub()
     end
     print("❌ Ошибка загрузки ключей!")
     return false
+end
+
+-- ============================================
+-- ============================================
+-- РАБОТА С ЛОКАЛЬНЫМ ФАЙЛОМ HWID
+-- ============================================
+-- ============================================
+
+local function LoadActivations()
+    local data = {}
+    local success, content = pcall(function()
+        return readfile(HWID_FILE)
+    end)
+    if success and content then
+        for entry in string.gmatch(content, "([^;]+)") do
+            local key, hwid = string.match(entry, "([^:]+):([^:]+)")
+            if key and hwid then
+                data[key] = hwid
+            end
+        end
+    end
+    return data
+end
+
+local function SaveActivation(key, hwid)
+    local data = LoadActivations()
+    data[key] = hwid
+    
+    local content = ""
+    for k, v in pairs(data) do
+        content = content .. k .. ":" .. v .. ";"
+    end
+    pcall(function()
+        writefile(HWID_FILE, content)
+    end)
+    print("✅ Сохранено: " .. key .. " → " .. hwid)
 end
 
 -- ============================================
@@ -110,6 +117,7 @@ local function LoadScriptMenu()
     end)
     if success and result then
         loadstring(result)()
+        print("✅ Меню загружено!")
     else
         print("❌ Ошибка загрузки меню!")
     end
@@ -240,7 +248,7 @@ local function CreateLoginGUI()
 
     -- ============================================
     -- ============================================
-    -- ПРОВЕРКА КЛЮЧА + ОТПРАВКА В TELEGRAM
+    -- ПРОВЕРКА КЛЮЧА
     -- ============================================
     -- ============================================
 
@@ -256,9 +264,8 @@ local function CreateLoginGUI()
             return
         end
         
-        -- Ищем ключ
+        -- 1. Проверяем, есть ли ключ в списке
         local foundKey = FindKey(inputKey)
-        
         if not foundKey then
             errorLabel.Text = "❌ Ключ не найден!"
             errorLabel.TextColor3 = Color3.fromRGB(255, 50, 50)
@@ -268,9 +275,13 @@ local function CreateLoginGUI()
             return
         end
         
-        -- Проверяем, использован ли ключ
-        if foundKey.used then
-            if foundKey.hwid == hwid then
+        -- 2. Проверяем локальный файл активаций
+        local activations = LoadActivations()
+        local savedHwid = activations[inputKey]
+        
+        if savedHwid then
+            if savedHwid == hwid then
+                -- Тот же пользователь — доступ разрешён
                 errorLabel.Text = "✅ Доступ разрешён!"
                 errorLabel.TextColor3 = Color3.fromRGB(0, 255, 0)
                 confirmBtn.BackgroundColor3 = Color3.fromRGB(0, 200, 0)
@@ -279,48 +290,30 @@ local function CreateLoginGUI()
                 task.wait(0.5)
                 screenGui:Destroy()
                 LoadScriptMenu()
+                return
             else
+                -- Ключ уже используется другим
                 errorLabel.Text = "❌ Ключ уже используется!"
                 errorLabel.TextColor3 = Color3.fromRGB(255, 50, 50)
                 codeBox.Text = ""
                 task.wait(1.5)
                 errorLabel.Text = ""
+                return
             end
-            return
         end
         
-        -- ============================================
-        -- КЛЮЧ АКТИВИРОВАН — ОТПРАВЛЯЕМ В TELEGRAM
-        -- ============================================
+        -- 3. Ключ свободен — активируем
+        SaveActivation(inputKey, hwid)
         
-        -- Отправляем уведомление
-        local message = string.format([[
-🎯 <b>АКТИВАЦИЯ КЛЮЧА</b>
-
-🔑 Ключ: <code>%s</code>
-🆔 HWID: <code>%s</code>
-👤 Игрок: %s
-🖥️ Устройство: %s
-📅 Время: %s
-        ]],
-            inputKey,
-            hwid,
-            player.Name,
-            UserInputService:GetPlatform(),
-            os.date("%Y-%m-%d %H:%M:%S")
-        )
-        
-        SendToTelegram(message)
-        
-        -- Обновляем ключ в памяти
-        foundKey.used = true
-        foundKey.hwid = hwid
-        
-        -- Открываем доступ
         errorLabel.Text = "✅ Ключ активирован!"
         errorLabel.TextColor3 = Color3.fromRGB(0, 255, 0)
         confirmBtn.BackgroundColor3 = Color3.fromRGB(0, 200, 0)
         confirmBtn.Text = "✅ ОТКРЫТО!"
+        
+        -- Сообщаем в консоль
+        print("🔑 Активирован ключ: " .. inputKey)
+        print("🆔 HWID: " .. hwid)
+        print("👤 Игрок: " .. player.Name)
         
         task.wait(0.5)
         screenGui:Destroy()
@@ -343,7 +336,6 @@ print("📥 Загрузка ключей...")
 local success = LoadKeysFromGitHub()
 if success then
     print("📌 Введите ключ для доступа")
-    print("📨 Уведомления отправляются в Telegram")
     CreateLoginGUI()
 else
     print("❌ Не удалось загрузить ключи!")
