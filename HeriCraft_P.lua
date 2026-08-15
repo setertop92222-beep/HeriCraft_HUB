@@ -133,7 +133,7 @@ end
 -- ============================================
 
 local function LoadScriptMenu()
-    local url = "https://raw.githubusercontent.com/" .. REPO_OWNER .. "/" .. REPO_NAME .. "/" .. BRANCH .. "/menu.lua"
+    local url = "https://raw.githubusercontent.com/" .. REPO_OWNER .. "/" .. REPO_NAME .. "/" .. BRANCH .. "HeriCraft_MENU.lua"
     local success, result = pcall(function()
         return game:HttpGet(url)
     end)
