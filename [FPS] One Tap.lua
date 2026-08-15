@@ -1,5 +1,5 @@
 -- ============================================
--- [FPS] One Tap - ESP + AIMBOT (С БОТАМИ)
+-- [FPS] One Tap - ESP + AIMBOT (ОПТИМИЗИРОВАННЫЙ)
 -- ============================================
 
 local Players = game:GetService("Players")
@@ -13,7 +13,7 @@ local camera = workspace.CurrentCamera
 local mouse = player:GetMouse()
 
 -- ============================================
--- ЦВЕТА (ЧЁРНЫЙ + ЖЁЛТЫЙ)
+-- ЦВЕТА
 -- ============================================
 
 local COLORS = {
@@ -24,7 +24,6 @@ local COLORS = {
     TextDark = Color3.fromRGB(150, 150, 150),
     Active = Color3.fromRGB(255, 215, 0),
     Inactive = Color3.fromRGB(60, 60, 60),
-    Item = Color3.fromRGB(255, 200, 0),
     Bot = Color3.fromRGB(255, 165, 0),
 }
 
@@ -37,11 +36,13 @@ local aimbotEnabled = false
 local menuOpen = false
 local isAiming = false
 local espObjects = {}
+local updateTimer = 0
+local cachedTargets = {}
 
 _G.AIM_AT = "Head"
 
 -- ============================================
--- GUI ФУНКЦИИ
+-- GUI ФУНКЦИИ (БЕЗ ИЗМЕНЕНИЙ)
 -- ============================================
 
 local function CreateFrame(parent, size, pos)
@@ -113,36 +114,16 @@ local function CreateButton(parent, size, pos, text, callback)
 end
 
 -- ============================================
--- ОПРЕДЕЛЕНИЕ ТИПА СУЩЕСТВА
+-- ОПТИМИЗИРОВАННОЕ ПОЛУЧЕНИЕ ЦЕЛЕЙ
 -- ============================================
 
 local function IsBot(char)
     if not char then return false end
-    
-    -- Проверяем, является ли игроком
     local plr = Players:GetPlayerFromCharacter(char)
-    if plr then
-        return false
-    end
-    
-    -- Проверяем наличие Humanoid
+    if plr then return false end
     local hum = char:FindFirstChildOfClass("Humanoid")
-    if not hum then
-        return false
-    end
-    
-    -- Проверяем наличие имени (у ботов часто есть имя)
-    if char.Name and char.Name ~= "" then
-        -- Если есть имя и это не игрок — считаем ботом
-        return true
-    end
-    
-    return true
+    return hum and hum.Health > 0
 end
-
--- ============================================
--- ПОЛУЧЕНИЕ ЦВЕТА ДЛЯ СУЩЕСТВА
--- ============================================
 
 local function GetEntityColor(char)
     if not char then return COLORS.Border end
@@ -160,7 +141,6 @@ local function GetEntityColor(char)
         return Color3.fromRGB(255, 255, 255)
     end
     
-    -- Если это бот — оранжевый
     if IsBot(char) then
         return COLORS.Bot
     end
@@ -168,95 +148,48 @@ local function GetEntityColor(char)
     return COLORS.Border
 end
 
--- ============================================
--- ПОЛУЧЕНИЕ ВСЕХ ЦЕЛЕЙ (ИГРОКИ + БОТЫ)
--- ============================================
-
-local function GetAllTargets()
+-- ОПТИМИЗИРОВАННЫЙ ПОИСК ЦЕЛЕЙ (только персонажи, без инструментов)
+local function GetTargets()
     local targets = {}
     local seen = {}
     
-    -- 1. Игроки
+    -- Игроки
     for _, plr in ipairs(Players:GetPlayers()) do
         if plr ~= player then
             local char = plr.Character
-            if char then
+            if char and not seen[char] then
                 local hum = char:FindFirstChild("Humanoid")
                 if hum and hum.Health > 0 then
                     local head = char:FindFirstChild("Head")
                     if head then
-                        if not seen[char] then
-                            seen[char] = true
-                            table.insert(targets, {
-                                type = "player",
-                                name = plr.Name,
-                                object = char,
-                                part = head,
-                                color = GetEntityColor(char),
-                                isBot = false
-                            })
-                        end
-                    end
-                end
-            end
-        end
-    end
-    
-    -- 2. Боты и другие существа (NPC, монстры, зомби)
-    for _, obj in ipairs(Workspace:GetDescendants()) do
-        if obj:IsA("Model") and obj:FindFirstChildOfClass("Humanoid") then
-            if not seen[obj] then
-                local plr = Players:GetPlayerFromCharacter(obj)
-                if not plr then
-                    local hum = obj:FindFirstChildOfClass("Humanoid")
-                    if hum and hum.Health > 0 then
-                        local head = obj:FindFirstChild("Head")
-                        if head then
-                            seen[obj] = true
-                            table.insert(targets, {
-                                type = "bot",
-                                name = obj.Name,
-                                object = obj,
-                                part = head,
-                                color = COLORS.Bot,
-                                isBot = true
-                            })
-                        end
-                    end
-                end
-            end
-        end
-    end
-    
-    -- 3. Инструменты (для ESP)
-    for _, obj in ipairs(Workspace:GetDescendants()) do
-        if obj:IsA("Tool") or obj:IsA("Part") then
-            if obj:IsA("Part") and obj.Parent and obj.Parent:IsA("Tool") then
-                obj = obj.Parent
-            end
-            if obj:IsA("Tool") and obj:FindFirstChildWhichIsA("Part") then
-                local part = obj:FindFirstChildWhichIsA("Part")
-                if part then
-                    local inHands = false
-                    for _, plr in ipairs(Players:GetPlayers()) do
-                        if plr ~= player then
-                            local char = plr.Character
-                            if char then
-                                local rightArm = char:FindFirstChild("Right Arm") or char:FindFirstChild("RightArm")
-                                local leftArm = char:FindFirstChild("Left Arm") or char:FindFirstChild("LeftArm")
-                                if rightArm and obj:IsDescendantOf(rightArm) then inHands = true end
-                                if leftArm and obj:IsDescendantOf(leftArm) then inHands = true end
-                            end
-                        end
-                    end
-                    if not inHands then
+                        seen[char] = true
                         table.insert(targets, {
-                            type = "item_ground",
-                            name = obj.Name,
+                            type = "player",
+                            object = char,
+                            part = head,
+                            color = GetEntityColor(char)
+                        })
+                    end
+                end
+            end
+        end
+    end
+    
+    -- Боты (только если есть Humanoid)
+    for _, obj in ipairs(Workspace:GetDescendants()) do
+        if obj:IsA("Model") and not seen[obj] then
+            local plr = Players:GetPlayerFromCharacter(obj)
+            if not plr then
+                local hum = obj:FindFirstChildOfClass("Humanoid")
+                if hum and hum.Health > 0 then
+                    local head = obj:FindFirstChild("Head")
+                    if head then
+                        seen[obj] = true
+                        table.insert(targets, {
+                            type = "bot",
                             object = obj,
-                            part = part,
-                            color = COLORS.Item,
-                            isBot = false
+                            part = head,
+                            color = COLORS.Bot
                         })
                     end
                 end
@@ -268,7 +201,7 @@ local function GetAllTargets()
 end
 
 -- ============================================
--- ESP ФУНКЦИИ
+-- ОПТИМИЗИРОВАННЫЙ ESP (обновление раз в 0.5 сек)
 -- ============================================
 
 local function clearESP()
@@ -284,7 +217,8 @@ local function updateESP()
     clearESP()
     if not espEnabled then return end
     
-    local targets = GetAllTargets()
+    local targets = GetTargets()
+    cachedTargets = targets
     
     for _, target in ipairs(targets) do
         if target.part and target.part.Parent then
@@ -292,18 +226,8 @@ local function updateESP()
                 local esp = Instance.new("BoxHandleAdornment")
                 esp.Adornee = target.object
                 esp.ZIndex = 0
-                
-                if target.type == "player" then
-                    esp.Size = Vector3.new(4, 5, 1)
-                    esp.Transparency = 0.5
-                elseif target.type == "bot" then
-                    esp.Size = Vector3.new(3, 4, 1)
-                    esp.Transparency = 0.4
-                else
-                    esp.Size = Vector3.new(2, 2, 1)
-                    esp.Transparency = 0.3
-                end
-                
+                esp.Size = target.type == "player" and Vector3.new(4, 5, 1) or Vector3.new(3, 4, 1)
+                esp.Transparency = 0.5
                 esp.Color3 = target.color or COLORS.Border
                 esp.AlwaysOnTop = true
                 esp.Name = "EspBox"
@@ -314,27 +238,34 @@ local function updateESP()
     end
 end
 
+-- ОБНОВЛЕНИЕ РАЗ В 0.5 СЕКУНДЫ (вместо каждого кадра)
+RunService.Heartbeat:Connect(function()
+    if not espEnabled then return end
+    
+    updateTimer = updateTimer + 1
+    if updateTimer >= 30 then -- ~0.5 секунды
+        updateTimer = 0
+        updateESP()
+    end
+end)
+
 -- ============================================
--- AIMBOT ФУНКЦИИ (ИГРОКИ + БОТЫ)
+-- ОПТИМИЗИРОВАННЫЙ AIMBOT
 -- ============================================
 
 local function GetNearestTarget()
     local closest = nil
     local closestDist = math.huge
     
-    local targets = GetAllTargets()
-    
-    for _, target in ipairs(targets) do
-        -- Целимся в игроков и ботов (не в инструменты)
-        if target.type == "player" or target.type == "bot" then
-            if target.part then
-                local screenPos, onScreen = camera:WorldToViewportPoint(target.part.Position)
-                if onScreen then
-                    local dist = (Vector2.new(screenPos.X, screenPos.Y) - Vector2.new(mouse.X, mouse.Y)).Magnitude
-                    if dist < closestDist then
-                        closestDist = dist
-                        closest = target
-                    end
+    -- Используем кэшированные цели
+    for _, target in ipairs(cachedTargets) do
+        if target.part then
+            local screenPos, onScreen = camera:WorldToViewportPoint(target.part.Position)
+            if onScreen then
+                local dist = (Vector2.new(screenPos.X, screenPos.Y) - Vector2.new(mouse.X, mouse.Y)).Magnitude
+                if dist < closestDist then
+                    closestDist = dist
+                    closest = target
                 end
             end
         end
@@ -342,10 +273,6 @@ local function GetNearestTarget()
     
     return closest
 end
-
--- ============================================
--- AIMBOT ЛОГИКА
--- ============================================
 
 UserInput.InputBegan:Connect(function(input, gameProcessed)
     if gameProcessed then return end
@@ -371,7 +298,7 @@ RunService.RenderStepped:Connect(function()
 end)
 
 -- ============================================
--- МЕНЮ
+-- МЕНЮ (БЕЗ ИЗМЕНЕНИЙ)
 -- ============================================
 
 local function CreateMenu()
@@ -387,8 +314,8 @@ local function CreateMenu()
     screenGui.ResetOnSpawn = false
 
     local mainFrame = CreateFrame(screenGui,
-        UDim2.new(0, 300, 0, 240),
-        UDim2.new(0.5, -150, 0.5, -120)
+        UDim2.new(0, 280, 0, 220),
+        UDim2.new(0.5, -140, 0.5, -110)
     )
     mainFrame.Visible = false
 
@@ -400,7 +327,6 @@ local function CreateMenu()
         20
     )
 
-    -- Кнопка ESP
     local espBtn = CreateButton(mainFrame,
         UDim2.new(0.8, 0, 0, 35),
         UDim2.new(0.1, 0, 0, 55),
@@ -424,7 +350,6 @@ local function CreateMenu()
         end
     end)
 
-    -- Кнопка Aimbot
     local aimBtn = CreateButton(mainFrame,
         UDim2.new(0.8, 0, 0, 35),
         UDim2.new(0.1, 0, 0, 105),
@@ -446,7 +371,6 @@ local function CreateMenu()
         end
     end)
 
-    -- Информация
     CreateLabel(mainFrame,
         UDim2.new(1, 0, 0, 20),
         UDim2.new(0, 0, 0, 155),
@@ -455,7 +379,6 @@ local function CreateMenu()
         12
     )
 
-    -- Кнопка закрытия
     local closeBtn = CreateButton(mainFrame,
         UDim2.new(0, 28, 0, 28),
         UDim2.new(1, -33, 0, 5),
@@ -474,10 +397,7 @@ local function CreateMenu()
     closeBtn.BorderColor3 = Color3.fromRGB(255, 50, 50)
     closeBtn.TextColor3 = Color3.fromRGB(255, 50, 50)
 
-    -- ============================================
     -- КРУЖОК
-    -- ============================================
-
     local circleGui = Instance.new("ScreenGui")
     circleGui.Name = "OneTapCircle"
     circleGui.Parent = CoreGui
@@ -548,7 +468,6 @@ local function CreateMenu()
         end
     end)
 
-    -- Анимация
     mainFrame.BackgroundTransparency = 1
     local tween = TweenService:Create(mainFrame, TweenInfo.new(0.3, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), {
         BackgroundTransparency = 0
@@ -557,22 +476,12 @@ local function CreateMenu()
 end
 
 -- ============================================
--- АВТООБНОВЛЕНИЕ ESP
--- ============================================
-
-RunService.Heartbeat:Connect(function()
-    if espEnabled then
-        updateESP()
-    end
-end)
-
--- ============================================
 -- ЗАПУСК
 -- ============================================
 
 print("🎯 [FPS] One Tap - ESP + Aimbot загружены!")
-print("📌 ESP: показывает игроков и ботов")
-print("📌 Aimbot: наводит на игроков и ботов")
+print("📌 Оптимизированная версия!")
+print("📌 ESP обновляется раз в 0.5 секунды")
 print("📌 Кружок [FPS] → открыть меню")
 print("📌 ПКМ → Aimbot")
 
