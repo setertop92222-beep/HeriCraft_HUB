@@ -11,12 +11,11 @@ local player = Players.LocalPlayer
 
 -- ============================================
 -- ============================================
--- НАСТРОЙКИ GITHUB
+-- НАСТРОЙКИ GITHUB (ТВОИ ДАННЫЕ)
 -- ============================================
 -- ============================================
 
--- ТВОИ ДАННЫЕ:
-local GITHUB_TOKEN = "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"  -- Personal Access Token
+local GITHUB_TOKEN = "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"
 local REPO_OWNER = "setertop92222-beep"
 local REPO_NAME = "HeriCraft_HUB"
 local FILE_PATH = "keys.lua"
@@ -24,6 +23,43 @@ local BRANCH = "main"
 
 local KEYS_URL = "https://raw.githubusercontent.com/" .. REPO_OWNER .. "/" .. REPO_NAME .. "/" .. BRANCH .. "/" .. FILE_PATH
 local API_URL = "https://api.github.com/repos/" .. REPO_OWNER .. "/" .. REPO_NAME .. "/contents/" .. FILE_PATH
+
+-- ============================================
+-- ============================================
+-- РУЧНАЯ ФУНКЦИЯ BASE64
+-- ============================================
+-- ============================================
+
+local function Base64Encode(data)
+    local b64chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/'
+    local b64 = {}
+    
+    for i = 1, #data, 3 do
+        local a, b, c = string.byte(data, i, i+2)
+        a = a or 0
+        b = b or 0
+        c = c or 0
+        
+        local n = a * 0x10000 + b * 0x100 + c
+        local chars = {
+            b64chars:sub(math.floor(n / 0x40000) + 1, math.floor(n / 0x40000) + 1),
+            b64chars:sub(math.floor(n % 0x40000 / 0x1000) + 1, math.floor(n % 0x40000 / 0x1000) + 1),
+            b64chars:sub(math.floor(n % 0x1000 / 0x40) + 1, math.floor(n % 0x1000 / 0x40) + 1),
+            b64chars:sub(n % 0x40 + 1, n % 0x40 + 1)
+        }
+        
+        if not c then
+            chars[4] = '='
+            if not b then
+                chars[3] = '='
+            end
+        end
+        
+        table.insert(b64, table.concat(chars))
+    end
+    
+    return table.concat(b64)
+end
 
 -- ============================================
 -- ============================================
@@ -75,9 +111,12 @@ local function UpdateKeysOnGitHub(newContent)
         return false
     end
     
+    -- ИСПОЛЬЗУЕМ РУЧНУЮ ФУНКЦИЮ BASE64
+    local encodedContent = Base64Encode(newContent)
+    
     local payload = {
         message = "Обновление HWID",
-        content = HttpService:Base64Encode(newContent),
+        content = encodedContent,
         sha = sha,
         branch = BRANCH
     }
@@ -133,12 +172,14 @@ end
 -- ============================================
 
 local function LoadScriptMenu()
-    local url = "https://raw.githubusercontent.com/" .. REPO_OWNER .. "/" .. REPO_NAME .. "/" .. BRANCH .. "HeriCraft_MENU.lua"
+    -- ИСПРАВЛЕНА ССЫЛКА (ДОБАВЛЕН СЛЭШ)
+    local url = "https://raw.githubusercontent.com/" .. REPO_OWNER .. "/" .. REPO_NAME .. "/" .. BRANCH .. "/HeriCraft_MENU.lua"
     local success, result = pcall(function()
         return game:HttpGet(url)
     end)
     if success and result then
         loadstring(result)()
+        print("✅ Меню загружено!")
     else
         print("❌ Ошибка загрузки меню!")
     end
