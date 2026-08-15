@@ -29,26 +29,6 @@ local player = Players.LocalPlayer
 local SCRIPTS = {
     -- ===== СКРИПТ 1 =====
     {"[FPS] One Tap", "https://raw.githubusercontent.com/setertop92222-beep/HeriCraft_HUB/refs/heads/main/%5BFPS%5D%20One%20Tap.lua"},
-    
-    -- ===== СКРИПТ 2 =====
-    {"AIMBOT", "https://raw.githubusercontent.com/setertop92222-beep/HeriCraft_HUB/refs/heads/main/HeriCraft_AIMBOT.lua"},
-    
-    -- ===== СКРИПТ 3 =====
-    {"ESP_all", "https://raw.githubusercontent.com/setertop92222-beep/HeriCraft_HUB/refs/heads/main/HeriCraft_ESP.lua"},
-
-    
-    {"ESP", "https://raw.githubusercontent.com/XNEOFF/FlyGuiV3/main/FlyGuiV3.txt"},
-
-    {"MENU_ALL_GAMES", "https://raw.githubusercontent.com/setertop92222-beep/HeriCraft_HUB/refs/heads/main/HeriCraft_menu_all_all_games.lua"},
-
-    {"MENU_ALL_GAMES", "https://raw.githubusercontent.com/setertop92222-beep/HeriCraft_HUB/refs/heads/main/HeriCraft_menu_all_all_games.lua"},
-
-    {"MENU_ALL_GAMES", "https://raw.githubusercontent.com/setertop92222-beep/HeriCraft_HUB/refs/heads/main/HeriCraft_menu_all_all_games.lua"},
-
-    {"MENU_ALL_GAMES", "https://raw.githubusercontent.com/setertop92222-beep/HeriCraft_HUB/refs/heads/main/HeriCraft_menu_all_all_games.lua"},
-
-    {"MENU_ALL_GAMES", "https://raw.githubusercontent.com/setertop92222-beep/HeriCraft_HUB/refs/heads/main/HeriCraft_menu_all_all_games.lua"},
-    
     -- ============================================
     -- ДОБАВЛЯЙ НОВЫЕ СКРИПТЫ СЮДА:
     -- ============================================
