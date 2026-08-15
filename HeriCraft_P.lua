@@ -13,7 +13,7 @@ local player = Players.LocalPlayer
 -- ССЫЛКА НА ФАЙЛ С КЛЮЧАМИ (GitHub)
 -- ============================================
 
-local KEYS_URL = "https://raw.githubusercontent.com/setertop92222-beep/HeriCraft_HUB/refs/heads/main/keys.lua"
+local KEYS_URL = "https://raw.githubusercontent.com/setertop92222-beep/HeriCraft_HUB/refs/heads/main/keels.lua"
 
 -- ============================================
 -- ЗАГРУЗКА КЛЮЧЕЙ И HWID С GITHUB
