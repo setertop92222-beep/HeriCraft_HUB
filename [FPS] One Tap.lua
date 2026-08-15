@@ -1,5 +1,5 @@
 -- ============================================
--- [FPS] One Tap - ESP + AIMBOT (С ПОДДЕРЖКОЙ ИНС)
+-- [FPS] One Tap - ESP + AIMBOT
 -- ============================================
 
 local Players = game:GetService("Players")
@@ -36,7 +36,7 @@ local aimbotEnabled = false
 local menuOpen = false
 local isAiming = false
 local espObjects = {}
-local aimbotTarget = nil
+local mainMenuOpened = false
 
 _G.AIM_AT = "Head"
 
@@ -113,13 +113,46 @@ local function CreateButton(parent, size, pos, text, callback)
 end
 
 -- ============================================
+-- ФУНКЦИЯ ВОЗВРАТА В ГЛАВНОЕ МЕНЮ
+-- ============================================
+
+local function ReturnToHub()
+    -- Удаляем текущее меню
+    for _, gui in ipairs(CoreGui:GetChildren()) do
+        if gui.Name == "OneTapFPS" or gui.Name == "OneTapCircle" then
+            gui:Destroy()
+        end
+    end
+    
+    -- Очищаем ESP
+    for _, v in ipairs(espObjects) do
+        if v and v.Parent then
+            v:Destroy()
+        end
+    end
+    espObjects = {}
+    espEnabled = false
+    aimbotEnabled = false
+    
+    -- Загружаем главное меню
+    local hubUrl = "https://raw.githubusercontent.com/setertop92222-beep/HeriCraft_HUB/refs/heads/main/hub.lua"
+    local success, result = pcall(function()
+        return game:HttpGet(hubUrl)
+    end)
+    if success and result then
+        loadstring(result)()
+    else
+        print("❌ Ошибка возврата в главное меню!")
+    end
+end
+
+-- ============================================
 -- ФУНКЦИИ ПОЛУЧЕНИЯ ОБЪЕКТОВ (ИГРОКИ + ИНС)
 -- ============================================
 
 local function GetAllTargets()
     local targets = {}
     
-    -- 1. Игроки
     for _, plr in ipairs(Players:GetPlayers()) do
         if plr ~= player then
             local char = plr.Character
@@ -141,12 +174,10 @@ local function GetAllTargets()
         end
     end
     
-    -- 2. Инструменты (инс) в руках игроков
     for _, plr in ipairs(Players:GetPlayers()) do
         if plr ~= player then
             local char = plr.Character
             if char then
-                -- Проверяем, что держит игрок в руках
                 local rightArm = char:FindFirstChild("Right Arm") or char:FindFirstChild("RightArm")
                 local leftArm = char:FindFirstChild("Left Arm") or char:FindFirstChild("LeftArm")
                 
@@ -187,7 +218,6 @@ local function GetAllTargets()
         end
     end
     
-    -- 3. Инструменты на земле (в workspace)
     for _, obj in ipairs(Workspace:GetDescendants()) do
         if obj:IsA("Tool") or obj:IsA("Part") then
             if obj:IsA("Part") and obj.Parent and obj.Parent:IsA("Tool") then
@@ -196,7 +226,6 @@ local function GetAllTargets()
             if obj:IsA("Tool") and obj:FindFirstChildWhichIsA("Part") then
                 local part = obj:FindFirstChildWhichIsA("Part")
                 if part then
-                    -- Проверяем, не находится ли в руках игрока (чтобы не дублировать)
                     local inHands = false
                     for _, plr in ipairs(Players:GetPlayers()) do
                         if plr ~= player then
@@ -259,7 +288,6 @@ local function updateESP()
     
     for _, target in ipairs(targets) do
         if target.part and target.part.Parent then
-            -- Пропускаем объекты без Humanoid (кроме инструментов)
             if target.type ~= "item" and target.type ~= "item_ground" then
                 local hum = target.object:FindFirstChild("Humanoid")
                 if not hum or hum.Health <= 0 then
@@ -284,7 +312,7 @@ local function updateESP()
 end
 
 -- ============================================
--- AIMBOT ФУНКЦИИ (ИГРОКИ + ИНС)
+-- AIMBOT ФУНКЦИИ
 -- ============================================
 
 local function GetNearestTarget()
@@ -294,7 +322,6 @@ local function GetNearestTarget()
     local targets = GetAllTargets()
     
     for _, target in ipairs(targets) do
-        -- Целимся только в игроков и инструменты в руках
         if target.type ~= "item_ground" then
             if target.part then
                 local screenPos, onScreen = camera:WorldToViewportPoint(target.part.Position)
@@ -356,8 +383,8 @@ local function CreateMenu()
     screenGui.ResetOnSpawn = false
 
     local mainFrame = CreateFrame(screenGui,
-        UDim2.new(0, 300, 0, 240),
-        UDim2.new(0.5, -150, 0.5, -120)
+        UDim2.new(0, 300, 0, 280),
+        UDim2.new(0.5, -150, 0.5, -140)
     )
     mainFrame.Visible = false
 
@@ -418,11 +445,25 @@ local function CreateMenu()
     -- Информация
     CreateLabel(mainFrame,
         UDim2.new(1, 0, 0, 20),
-        UDim2.new(0, 0, 0, 160),
+        UDim2.new(0, 0, 0, 155),
         "ПКМ - Aimbot (игроки + инс)",
         COLORS.TextDark,
         12
     )
+
+    -- КНОПКА: ВЕРНУТЬСЯ В СПИСОК СКРИПТОВ
+    local backBtn = CreateButton(mainFrame,
+        UDim2.new(0.8, 0, 0, 35),
+        UDim2.new(0.1, 0, 0, 190),
+        "⬅ ВЕРНУТЬСЯ В ХАБ"
+    )
+    backBtn.BackgroundColor3 = Color3.fromRGB(30, 20, 0)
+    backBtn.BorderColor3 = Color3.fromRGB(255, 200, 0)
+    backBtn.TextColor3 = Color3.fromRGB(255, 200, 0)
+
+    backBtn.MouseButton1Click:Connect(function()
+        ReturnToHub()
+    end)
 
     -- Кнопка закрытия
     local closeBtn = CreateButton(mainFrame,
@@ -542,5 +583,6 @@ end)
 print("🎯 [FPS] One Tap - ESP + Aimbot загружены!")
 print("📌 Кружок [FPS] → открыть меню")
 print("📌 ПКМ → Aimbot (игроки + инс)")
+print("📌 Кнопка 'Вернуться в хаб' → возврат в список скриптов")
 
 CreateMenu()
