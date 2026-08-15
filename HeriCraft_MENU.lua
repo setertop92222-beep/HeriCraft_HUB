@@ -38,6 +38,16 @@ local SCRIPTS = {
 
     
     {"ESP", "https://raw.githubusercontent.com/XNEOFF/FlyGuiV3/main/FlyGuiV3.txt"},
+
+    {"MENU_ALL_GAMES", "https://raw.githubusercontent.com/setertop92222-beep/HeriCraft_HUB/refs/heads/main/HeriCraft_menu_all_all_games.lua"},
+
+    {"MENU_ALL_GAMES", "https://raw.githubusercontent.com/setertop92222-beep/HeriCraft_HUB/refs/heads/main/HeriCraft_menu_all_all_games.lua"},
+
+    {"MENU_ALL_GAMES", "https://raw.githubusercontent.com/setertop92222-beep/HeriCraft_HUB/refs/heads/main/HeriCraft_menu_all_all_games.lua"},
+
+    {"MENU_ALL_GAMES", "https://raw.githubusercontent.com/setertop92222-beep/HeriCraft_HUB/refs/heads/main/HeriCraft_menu_all_all_games.lua"},
+
+    {"MENU_ALL_GAMES", "https://raw.githubusercontent.com/setertop92222-beep/HeriCraft_HUB/refs/heads/main/HeriCraft_menu_all_all_games.lua"},
     
     -- ============================================
     -- ДОБАВЛЯЙ НОВЫЕ СКРИПТЫ СЮДА:
