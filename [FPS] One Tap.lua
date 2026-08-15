@@ -1,5 +1,5 @@
 -- ============================================
--- [FPS] One Tap - ESP + AIMBOT (ОПТИМИЗИРОВАННЫЙ)
+-- [FPS] One Tap - ESP + AIMBOT (С КНОПКОЙ В ХАБ)
 -- ============================================
 
 local Players = game:GetService("Players")
@@ -42,7 +42,7 @@ local cachedTargets = {}
 _G.AIM_AT = "Head"
 
 -- ============================================
--- GUI ФУНКЦИИ (БЕЗ ИЗМЕНЕНИЙ)
+-- GUI ФУНКЦИИ
 -- ============================================
 
 local function CreateFrame(parent, size, pos)
@@ -114,41 +114,40 @@ local function CreateButton(parent, size, pos, text, callback)
 end
 
 -- ============================================
--- ОПТИМИЗИРОВАННОЕ ПОЛУЧЕНИЕ ЦЕЛЕЙ
+-- ФУНКЦИЯ ВОЗВРАТА В ХАБ
 -- ============================================
 
-local function IsBot(char)
-    if not char then return false end
-    local plr = Players:GetPlayerFromCharacter(char)
-    if plr then return false end
-    local hum = char:FindFirstChildOfClass("Humanoid")
-    return hum and hum.Health > 0
-end
-
-local function GetEntityColor(char)
-    if not char then return COLORS.Border end
-    
-    local plr = Players:GetPlayerFromCharacter(char)
-    if plr then
-        if plr == player then return Color3.fromRGB(0, 150, 255) end
-        if plr.Team and player.Team then
-            if plr.Team == player.Team then
-                return Color3.fromRGB(0, 255, 0)
-            else
-                return Color3.fromRGB(255, 0, 0)
-            end
+local function ReturnToHub()
+    -- Удаляем всё
+    for _, gui in ipairs(CoreGui:GetChildren()) do
+        if gui.Name == "OneTapFPS" or gui.Name == "OneTapCircle" then
+            gui:Destroy()
         end
-        return Color3.fromRGB(255, 255, 255)
     end
     
-    if IsBot(char) then
-        return COLORS.Bot
+    for _, v in ipairs(espObjects) do
+        if v and v.Parent then
+            v:Destroy()
+        end
     end
+    espObjects = {}
+    espEnabled = false
+    aimbotEnabled = false
     
-    return COLORS.Border
+    -- Загружаем хаб
+    local hubUrl = "https://raw.githubusercontent.com/setertop92222-beep/HeriCraft_HUB/refs/heads/main/hub.lua"
+    local success, result = pcall(function()
+        return game:HttpGet(hubUrl)
+    end)
+    if success and result then
+        loadstring(result)()
+    end
 end
 
--- ОПТИМИЗИРОВАННЫЙ ПОИСК ЦЕЛЕЙ (только персонажи, без инструментов)
+-- ============================================
+-- ПОЛУЧЕНИЕ ЦЕЛЕЙ
+-- ============================================
+
 local function GetTargets()
     local targets = {}
     local seen = {}
@@ -163,11 +162,19 @@ local function GetTargets()
                     local head = char:FindFirstChild("Head")
                     if head then
                         seen[char] = true
+                        local color = COLORS.Border
+                        if plr.Team and player.Team then
+                            if plr.Team == player.Team then
+                                color = Color3.fromRGB(0, 255, 0)
+                            else
+                                color = Color3.fromRGB(255, 0, 0)
+                            end
+                        end
                         table.insert(targets, {
                             type = "player",
                             object = char,
                             part = head,
-                            color = GetEntityColor(char)
+                            color = color
                         })
                     end
                 end
@@ -175,11 +182,10 @@ local function GetTargets()
         end
     end
     
-    -- Боты (только если есть Humanoid)
+    -- Боты
     for _, obj in ipairs(Workspace:GetDescendants()) do
         if obj:IsA("Model") and not seen[obj] then
-            local plr = Players:GetPlayerFromCharacter(obj)
-            if not plr then
+            if not Players:GetPlayerFromCharacter(obj) then
                 local hum = obj:FindFirstChildOfClass("Humanoid")
                 if hum and hum.Health > 0 then
                     local head = obj:FindFirstChild("Head")
@@ -201,7 +207,7 @@ local function GetTargets()
 end
 
 -- ============================================
--- ОПТИМИЗИРОВАННЫЙ ESP (обновление раз в 0.5 сек)
+-- ESP
 -- ============================================
 
 local function clearESP()
@@ -238,26 +244,23 @@ local function updateESP()
     end
 end
 
--- ОБНОВЛЕНИЕ РАЗ В 0.5 СЕКУНДЫ (вместо каждого кадра)
 RunService.Heartbeat:Connect(function()
     if not espEnabled then return end
-    
     updateTimer = updateTimer + 1
-    if updateTimer >= 30 then -- ~0.5 секунды
+    if updateTimer >= 30 then
         updateTimer = 0
         updateESP()
     end
 end)
 
 -- ============================================
--- ОПТИМИЗИРОВАННЫЙ AIMBOT
+-- AIMBOT
 -- ============================================
 
 local function GetNearestTarget()
     local closest = nil
     local closestDist = math.huge
     
-    -- Используем кэшированные цели
     for _, target in ipairs(cachedTargets) do
         if target.part then
             local screenPos, onScreen = camera:WorldToViewportPoint(target.part.Position)
@@ -298,7 +301,7 @@ RunService.RenderStepped:Connect(function()
 end)
 
 -- ============================================
--- МЕНЮ (БЕЗ ИЗМЕНЕНИЙ)
+-- МЕНЮ
 -- ============================================
 
 local function CreateMenu()
@@ -314,8 +317,8 @@ local function CreateMenu()
     screenGui.ResetOnSpawn = false
 
     local mainFrame = CreateFrame(screenGui,
-        UDim2.new(0, 280, 0, 220),
-        UDim2.new(0.5, -140, 0.5, -110)
+        UDim2.new(0, 280, 0, 260),
+        UDim2.new(0.5, -140, 0.5, -130)
     )
     mainFrame.Visible = false
 
@@ -327,6 +330,7 @@ local function CreateMenu()
         20
     )
 
+    -- ESP
     local espBtn = CreateButton(mainFrame,
         UDim2.new(0.8, 0, 0, 35),
         UDim2.new(0.1, 0, 0, 55),
@@ -350,6 +354,7 @@ local function CreateMenu()
         end
     end)
 
+    -- Aimbot
     local aimBtn = CreateButton(mainFrame,
         UDim2.new(0.8, 0, 0, 35),
         UDim2.new(0.1, 0, 0, 105),
@@ -371,6 +376,7 @@ local function CreateMenu()
         end
     end)
 
+    -- Инфо
     CreateLabel(mainFrame,
         UDim2.new(1, 0, 0, 20),
         UDim2.new(0, 0, 0, 155),
@@ -378,6 +384,27 @@ local function CreateMenu()
         COLORS.TextDark,
         12
     )
+
+    -- ============================================
+    -- КНОПКА: ВЕРНУТЬСЯ В ХАБ
+    -- ============================================
+
+    local backBtn = CreateButton(mainFrame,
+        UDim2.new(0.8, 0, 0, 35),
+        UDim2.new(0.1, 0, 0, 190),
+        "⬅ ВЕРНУТЬСЯ В ХАБ"
+    )
+    backBtn.BackgroundColor3 = Color3.fromRGB(30, 20, 0)
+    backBtn.BorderColor3 = Color3.fromRGB(255, 200, 0)
+    backBtn.TextColor3 = Color3.fromRGB(255, 200, 0)
+
+    backBtn.MouseButton1Click:Connect(function()
+        ReturnToHub()
+    end)
+
+    -- ============================================
+    -- Кнопка закрытия
+    -- ============================================
 
     local closeBtn = CreateButton(mainFrame,
         UDim2.new(0, 28, 0, 28),
@@ -397,7 +424,10 @@ local function CreateMenu()
     closeBtn.BorderColor3 = Color3.fromRGB(255, 50, 50)
     closeBtn.TextColor3 = Color3.fromRGB(255, 50, 50)
 
+    -- ============================================
     -- КРУЖОК
+    -- ============================================
+
     local circleGui = Instance.new("ScreenGui")
     circleGui.Name = "OneTapCircle"
     circleGui.Parent = CoreGui
@@ -480,9 +510,8 @@ end
 -- ============================================
 
 print("🎯 [FPS] One Tap - ESP + Aimbot загружены!")
-print("📌 Оптимизированная версия!")
-print("📌 ESP обновляется раз в 0.5 секунды")
 print("📌 Кружок [FPS] → открыть меню")
 print("📌 ПКМ → Aimbot")
+print("📌 Кнопка 'Вернуться в хаб' → возврат в главное меню")
 
 CreateMenu()
