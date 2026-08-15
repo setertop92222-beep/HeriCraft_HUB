@@ -1,84 +1,226 @@
+-- ============================================
+-- HERRICRAFT HUB - СИСТЕМА КЛЮЧЕЙ С АДМИН-ПАНЕЛЬЮ
+-- ============================================
+
 local Players = game:GetService("Players")
 local CoreGui = game:GetService("CoreGui")
-local UserInput = game:GetService("UserInputService")
 local TweenService = game:GetService("TweenService")
-local HttpService = game:GetService("HttpService")
-
 local player = Players.LocalPlayer
 
 -- ============================================
--- НАСТРОЙКИ (ИЗМЕНЯЙ ЗДЕСЬ)
+-- НАСТРОЙКИ
 -- ============================================
 
-local CONFIG = {
-    -- Пароль для входа (НЕ ВЫВОДИТСЯ В КОНСОЛЬ)
-    Password = "1213141516",
-    
-    -- Ссылки на GitHub (RAW)
-    Scripts = {
-        Menu = "https://raw.githubusercontent.com/setertop92222-beep/HeriCraft_HUB/refs/heads/main/HeriCraft_MENU.lua",
-    }
+-- ВСЕ 100 КЛЮЧЕЙ (из твоего файла)
+local KEYS = {
+    "JFJRKCMD-KEJDUENT",
+    "BXJDRKDM-ELPQLSWN",
+    "DJFHXJDN-VMCKELKT",
+    "JDNFHCMV-DLFNGKDJ",
+    "CMVMCJEU-RKDMSJDN",
+    "FHCMVKRK-DLEJFNCK",
+    "DMVKELFJ-NRCJFNRK",
+    "DMELTJDNFHCMVKXM",
+    "CKDLEJFN-PQLSKDJC",
+    "MVBRJDNK-FKEMCKDM",
+    "VKELJDNF-JCNRKDME",
+    "KLDNJFHC-MVKRMCKJ",
+    "DNFLEXJDNKFMCVLT",
+    "JDNRKEMC-DLFNGKDJ",
+    "VKVMCJEU-RKDLSJDN",
+    "FHCMRKRK-DLEJFNCV",
+    "DMVKELFJ-MCCJFNRK",
+    "DMEKTJDN-FHCMLKXM",
+    "CKDLEJFR-PQLSKDJC",
+    "MNBRJDNF-KEMVKDMV",
+    "KELJMC FJCNRKDMLK",
+    "LDNJFHCM-VKRMCKJD",
+    "NFLEXJDN-KFMCVRKT",
+    "JDNRKEML-DLFNGKDJ",
+    "VMVMCJEU-RKDFSJDN",
+    "FHCMVKRK-DLEJFNCX",
+    "DMVKELFJ-DNCJFNRK",
+    "DMELTJDNFHCMVKXMC",
+    "KDLEJFNP-QLSKDJCM",
+    "VBRJDNFK-EMCKDMVK",
+    "ELJDN FJCNRKDMEKL",
+    "DNJFHCMV-KRMCKJDN",
+    "FLEXJDNK-FMCVLKTJ",
+    "DNRKEMCD-LFNGKDJV",
+    "KVMCJEUR-KDLSJDNF",
+    "HCMRKRKD-LEJFNCVD",
+    "MVKELFJM-CCJFNRKD",
+    "MEKTJDNF-HCMLKXMC",
+    "KDLEJFRP-QLSKDJCM",
+    "NBRJDNFK-EMVKDMVK",
+    "ELJMCFJC-NRKDMLKL",
+    "DNJFHCMV-KRMCKJDN",
+    "FLEXJDNK-FMCVRKTJ",
+    "DNRKEMLD-LFNGKDJV",
+    "MVMCJEUR-KDFSJDNF",
+    "HCMVKRKD-LEJFNCXD",
+    "MVKELFJD-NCJFNRKD",
+    "MELTJDNF-HCMVKXMC",
+    "KDLEJFNP-QLSKDJCM",
+    "VBRJDNFK-EMCKDMVK",
+    "ELJDNFJC-NRKDMEKL",
+    "DNJFHCMV-KRMCKJDN",
+    "FLEXJDNK-FMCVLKTJ",
+    "DNRKEMCD-LFNGKDJV",
+    "KVMCJEUR-KDLSJDNF",
+    "HCMRKRKD-LEJFNCVD",
+    "MVKELFJM-CCJFNRKD",
+    "MEKTJDNF-HCMLKXMC",
+    "KDLEJFRP-QLSKDJCM",
+    "NBRJDNFK-EMVKDMVK",
+    "ELJMCFJC-NRKDMLKL",
+    "DNJFHCMV-KRMCKJDN",
+    "FLEXJDNK-FMCVRKTJ",
+    "DNRKEMLD-LFNGKDJV",
+    "MVMCJEUR-KDFSJDNF",
+    "HCMVKRKD-LEJFNCXD",
+    "MVKELFJD-NCJFNRKD",
+    "MELTJDNF-HCMVKXMC",
+    "KDLEJFNP-QLSKDJCM",
+    "VBRJDNFK-EMCKDMVK",
+    "ELJDNFJC-NRKDMEKL",
+    "DNJFHCMV-KRMCKJDN",
+    "FLEXJDNK-FMCVLKTJ",
+    "DNRKEMCD-LFNGKDJV",
+    "KVMCJEUR-KDLSJDNF",
+    "HCMRKRKD-LEJFNCVD",
+    "MVKELFJM-CCJFNRKD",
+    "MEKTJDNF-HCMLKXMC",
+    "KDLEJFRP-QLSKDJCM",
+    "NBRJDNFK-EMVKDMVK",
+    "ELJMCFJC-NRKDMLKL",
+    "DNJFHCMV-KRMCKJDN",
+    "FLEXJDNK-FMCVRKTJ",
+    "DNRKEMLD-LFNGKDJV",
+    "MVMCJEUR-KDFSJDNF",
+    "HCMVKRKD-LEJFNCXD",
+    "MVKELFJD-NCJFNRKD",
+    "MELTJDNF-HCMVKXMC",
+    "KDLEJFNP-QLSKDJCM",
+    "VBRJDNFK-EMCKDMVK",
+    "ELJDNFJC-NRKDMEKL",
+    "DNJFHCMV-KRMCKJDN",
+    "FLEXJDNK-FMCVLKTJ",
+    "DNRKEMCD-LFNGKDJV",
+    "KVMCJEUR-KDLSJDNF",
+    "HCMRKRKD-LEJFNCVD",
+    "MVKELFJM-CCJFNRKD",
+    "MEKTJDNF-HCMLKXMC",
+    "KDLEJFRP-QLSKDJCM",
+    "NBRJDNFK-EMVKDMVK"
 }
 
+-- МАСТЕР-ПАРОЛЬ ДЛЯ АДМИН-ПАНЕЛИ
+local MASTER_PASSWORD = "007489"  -- Измени на свой
+
 -- ============================================
--- ЗАГРУЗЧИК СКРИПТОВ С GITHUB
+-- ХРАНИЛИЩЕ АКТИВИРОВАННЫХ КЛЮЧЕЙ
 -- ============================================
 
-local function LoadScriptFromGithub(url)
-    local success, result = pcall(function()
-        return game:HttpGet(url)
+local ActivatedKeys = {}
+
+-- ============================================
+-- ЗАГРУЗКА И СОХРАНЕНИЕ ДАННЫХ
+-- ============================================
+
+local function SaveActivatedKeys()
+    local data = ""
+    for key, hwid in pairs(ActivatedKeys) do
+        data = data .. key .. ":" .. hwid .. ";"
+    end
+    pcall(function()
+        writefile("Hericraft_Keys.txt", data)
     end)
-    
-    if success and result then
-        return result
-    else
-        return nil
+end
+
+local function LoadActivatedKeys()
+    local data = pcall(function()
+        return readfile("Hericraft_Keys.txt")
+    end)
+    if data then
+        for entry in string.gmatch(data, "([^;]+)") do
+            local parts = {}
+            for part in string.gmatch(entry, "([^:]+)") do
+                table.insert(parts, part)
+            end
+            if #parts == 2 then
+                ActivatedKeys[parts[1]] = parts[2]
+            end
+        end
     end
 end
 
+LoadActivatedKeys()
+
 -- ============================================
--- ФУНКЦИЯ ПЛАВНОГО ЗАКРЫТИЯ
+-- ПОЛУЧЕНИЕ HWID
 -- ============================================
 
-local function CloseGUI(gui, callback)
-    if not gui then
-        if callback then callback() end
-        return
-    end
-    
-    local frame = gui:FindFirstChildWhichIsA("Frame")
-    if frame then
-        local tween = TweenService:Create(frame, TweenInfo.new(0.3, Enum.EasingStyle.Quint, Enum.EasingDirection.In), {
-            BackgroundTransparency = 1
-        })
-        tween:Play()
-        tween.Completed:Connect(function()
-            gui:Destroy()
-            if callback then callback() end
-        end)
-    else
-        gui:Destroy()
-        if callback then callback() end
-    end
+local function GetHWID()
+    local userId = player.UserId
+    local platform = game:GetService("UserInputService"):GetPlatform()
+    return tostring(userId) .. "_" .. tostring(platform)
 end
 
 -- ============================================
--- МЕНЮ ВХОДА С ПАРОЛЕМ
+-- ФУНКЦИИ ДЛЯ КЛЮЧЕЙ
 -- ============================================
 
-local function CreateLoginMenu()
-    -- Удаляем старые GUI
-    for _, gui in ipairs(CoreGui:GetChildren()) do
-        if gui.Name == "HerricraftLogin" or gui.Name == "HerricraftScriptMenu" then
-            gui:Destroy()
+local function CheckAccess(key, hwid)
+    local keyExists = false
+    for _, k in ipairs(KEYS) do
+        if k == key then
+            keyExists = true
+            break
+        end
+    end
+    if not keyExists then
+        return false, "Ключ не найден!"
+    end
+    
+    local savedHwid = ActivatedKeys[key]
+    if savedHwid then
+        if savedHwid == hwid then
+            return true, "Доступ разрешён!"
+        else
+            return false, "Этот ключ уже используется на другом устройстве!"
         end
     end
     
+    return true, "Ключ активирован!"
+end
+
+local function ActivateKey(key, hwid)
+    ActivatedKeys[key] = hwid
+    SaveActivatedKeys()
+    return true, "Ключ успешно активирован!"
+end
+
+local function ResetKey(key)
+    if ActivatedKeys[key] then
+        ActivatedKeys[key] = nil
+        SaveActivatedKeys()
+        return true, "HWID сброшен для ключа: " .. key
+    else
+        return false, "Ключ не найден в списке активированных!"
+    end
+end
+
+-- ============================================
+-- GUI ВХОДА
+-- ============================================
+
+local function CreateLoginGUI()
     local screenGui = Instance.new("ScreenGui")
-    screenGui.Name = "HerricraftLogin"
+    screenGui.Name = "HericraftLogin"
     screenGui.Parent = CoreGui
     screenGui.ResetOnSpawn = false
-    
+
     local mainFrame = Instance.new("Frame")
     mainFrame.Parent = screenGui
     mainFrame.Size = UDim2.new(0, 420, 0, 320)
@@ -87,18 +229,11 @@ local function CreateLoginMenu()
     mainFrame.BorderSizePixel = 0
     mainFrame.Active = true
     mainFrame.Draggable = true
-    
+
     local corner = Instance.new("UICorner")
     corner.CornerRadius = UDim.new(0, 16)
     corner.Parent = mainFrame
-    
-    local stroke = Instance.new("UIStroke")
-    stroke.Parent = mainFrame
-    stroke.Color = Color3.fromRGB(255, 215, 0)
-    stroke.Thickness = 2
-    stroke.Transparency = 0.2
-    
-    -- Заголовок
+
     local title = Instance.new("TextLabel")
     title.Parent = mainFrame
     title.Size = UDim2.new(1, 0, 0, 60)
@@ -109,19 +244,18 @@ local function CreateLoginMenu()
     title.TextSize = 30
     title.Font = Enum.Font.GothamBold
     title.TextXAlignment = Enum.TextXAlignment.Center
-    
+
     local subtitle = Instance.new("TextLabel")
     subtitle.Parent = mainFrame
     subtitle.Size = UDim2.new(1, 0, 0, 25)
     subtitle.Position = UDim2.new(0, 0, 0, 65)
     subtitle.BackgroundTransparency = 1
-    subtitle.Text = "🔐 Введите пароль для доступа"
+    subtitle.Text = "🔑 Введите ключ для доступа"
     subtitle.TextColor3 = Color3.fromRGB(160, 160, 160)
     subtitle.TextSize = 14
     subtitle.Font = Enum.Font.Gotham
     subtitle.TextXAlignment = Enum.TextXAlignment.Center
-    
-    -- Поле ввода
+
     local codeBox = Instance.new("TextBox")
     codeBox.Parent = mainFrame
     codeBox.Size = UDim2.new(0.6, 0, 0, 45)
@@ -129,19 +263,18 @@ local function CreateLoginMenu()
     codeBox.BackgroundColor3 = Color3.fromRGB(35, 35, 40)
     codeBox.BorderSizePixel = 0
     codeBox.Text = ""
-    codeBox.PlaceholderText = "🔑 Введите пароль..."
+    codeBox.PlaceholderText = "🔑 Введите ключ..."
     codeBox.TextColor3 = Color3.fromRGB(255, 255, 255)
     codeBox.PlaceholderColor3 = Color3.fromRGB(130, 130, 130)
     codeBox.TextSize = 18
     codeBox.Font = Enum.Font.GothamMedium
     codeBox.TextXAlignment = Enum.TextXAlignment.Center
     codeBox.ClearTextOnFocus = false
-    
+
     local codeCorner = Instance.new("UICorner")
     codeCorner.CornerRadius = UDim.new(0, 10)
     codeCorner.Parent = codeBox
-    
-    -- Кнопка входа
+
     local confirmBtn = Instance.new("TextButton")
     confirmBtn.Parent = mainFrame
     confirmBtn.Size = UDim2.new(0.4, 0, 0, 45)
@@ -152,12 +285,11 @@ local function CreateLoginMenu()
     confirmBtn.TextColor3 = Color3.fromRGB(18, 18, 22)
     confirmBtn.TextSize = 18
     confirmBtn.Font = Enum.Font.GothamBold
-    
+
     local btnCorner = Instance.new("UICorner")
     btnCorner.CornerRadius = UDim.new(0, 10)
     btnCorner.Parent = confirmBtn
-    
-    -- Ошибка
+
     local errorLabel = Instance.new("TextLabel")
     errorLabel.Parent = mainFrame
     errorLabel.Size = UDim2.new(1, 0, 0, 25)
@@ -168,7 +300,210 @@ local function CreateLoginMenu()
     errorLabel.TextSize = 14
     errorLabel.Font = Enum.Font.Gotham
     errorLabel.TextXAlignment = Enum.TextXAlignment.Center
+
+    local closeBtn = Instance.new("TextButton")
+    closeBtn.Parent = mainFrame
+    closeBtn.Size = UDim2.new(0, 32, 0, 32)
+    closeBtn.Position = UDim2.new(1, -38, 0, 8)
+    closeBtn.BackgroundColor3 = Color3.fromRGB(255, 50, 50)
+    closeBtn.BorderSizePixel = 0
+    closeBtn.Text = "✕"
+    closeBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+    closeBtn.TextSize = 18
+    closeBtn.Font = Enum.Font.GothamBold
+
+    local closeCorner = Instance.new("UICorner")
+    closeCorner.CornerRadius = UDim.new(0, 8)
+    closeCorner.Parent = closeBtn
+
+    closeBtn.MouseButton1Click:Connect(function()
+        screenGui:Destroy()
+    end)
+
+    -- ============================================
+    -- ПРОВЕРКА КЛЮЧА (И МАСТЕР-ПАРОЛЯ)
+    -- ============================================
+
+    local function CheckKey()
+        local input = codeBox.Text
+        local hwid = GetHWID()
+        
+        -- ПРОВЕРКА МАСТЕР-ПАРОЛЯ (ОТКРЫВАЕТ АДМИН-ПАНЕЛЬ)
+        if input == MASTER_PASSWORD then
+            screenGui:Destroy()
+            CreateAdminPanel()
+            return
+        end
+        
+        -- ОБЫЧНАЯ ПРОВЕРКА КЛЮЧА
+        local access, message = CheckAccess(input, hwid)
+        
+        if access then
+            local activated, msg = ActivateKey(input, hwid)
+            if activated then
+                errorLabel.Text = "✅ " .. msg
+                errorLabel.TextColor3 = Color3.fromRGB(0, 255, 0)
+                confirmBtn.BackgroundColor3 = Color3.fromRGB(0, 200, 0)
+                confirmBtn.Text = "✅ ОТКРЫТО!"
+                
+                task.wait(0.5)
+                screenGui:Destroy()
+                
+                local menuUrl = "https://raw.githubusercontent.com/setertop92222-beep/HeriCraft_HUB/refs/heads/main/HeriCraft_MENU.lua"
+                loadstring(game:HttpGet(menuUrl))()
+            else
+                errorLabel.Text = "❌ " .. msg
+                errorLabel.TextColor3 = Color3.fromRGB(255, 50, 50)
+                codeBox.Text = ""
+                task.wait(1)
+                errorLabel.Text = ""
+            end
+        else
+            errorLabel.Text = "❌ " .. message
+            errorLabel.TextColor3 = Color3.fromRGB(255, 50, 50)
+            codeBox.Text = ""
+            task.wait(1)
+            errorLabel.Text = ""
+        end
+    end
+
+    confirmBtn.MouseButton1Click:Connect(CheckKey)
+    codeBox.FocusLost:Connect(function(enterPressed)
+        if enterPressed then CheckKey() end
+    end)
+end
+
+-- ============================================
+-- ============================================
+-- АДМИН-ПАНЕЛЬ
+-- ============================================
+-- ============================================
+
+local function CreateAdminPanel()
+    local screenGui = Instance.new("ScreenGui")
+    screenGui.Name = "AdminPanel"
+    screenGui.Parent = CoreGui
+    screenGui.ResetOnSpawn = false
+
+    local mainFrame = Instance.new("Frame")
+    mainFrame.Parent = screenGui
+    mainFrame.Size = UDim2.new(0, 450, 0, 380)
+    mainFrame.Position = UDim2.new(0.5, -225, 0.5, -190)
+    mainFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 25)
+    mainFrame.BorderSizePixel = 0
+    mainFrame.Active = true
+    mainFrame.Draggable = true
+
+    local corner = Instance.new("UICorner")
+    corner.CornerRadius = UDim.new(0, 16)
+    corner.Parent = mainFrame
+
+    local stroke = Instance.new("UIStroke")
+    stroke.Parent = mainFrame
+    stroke.Color = Color3.fromRGB(255, 0, 0)
+    stroke.Thickness = 2
+    stroke.Transparency = 0.3
+
+    -- Заголовок
+    local title = Instance.new("TextLabel")
+    title.Parent = mainFrame
+    title.Size = UDim2.new(1, 0, 0, 50)
+    title.Position = UDim2.new(0, 0, 0, 5)
+    title.BackgroundTransparency = 1
+    title.Text = "🔐 АДМИН-ПАНЕЛЬ"
+    title.TextColor3 = Color3.fromRGB(255, 0, 0)
+    title.TextSize = 24
+    title.Font = Enum.Font.GothamBold
+    title.TextXAlignment = Enum.TextXAlignment.Center
+
+    local subtitle = Instance.new("TextLabel")
+    subtitle.Parent = mainFrame
+    subtitle.Size = UDim2.new(1, 0, 0, 20)
+    subtitle.Position = UDim2.new(0, 0, 0, 50)
+    subtitle.BackgroundTransparency = 1
+    subtitle.Text = "Управление ключами и HWID"
+    subtitle.TextColor3 = Color3.fromRGB(150, 150, 150)
+    subtitle.TextSize = 12
+    subtitle.Font = Enum.Font.Gotham
+    subtitle.TextXAlignment = Enum.TextXAlignment.Center
+
+    -- Поле для ввода ключа
+    local resetBox = Instance.new("TextBox")
+    resetBox.Parent = mainFrame
+    resetBox.Size = UDim2.new(0.6, 0, 0, 40)
+    resetBox.Position = UDim2.new(0.2, 0, 0, 90)
+    resetBox.BackgroundColor3 = Color3.fromRGB(35, 35, 40)
+    resetBox.BorderSizePixel = 0
+    resetBox.Text = ""
+    resetBox.PlaceholderText = "🔑 Введите ключ для сброса..."
+    resetBox.TextColor3 = Color3.fromRGB(255, 255, 255)
+    resetBox.PlaceholderColor3 = Color3.fromRGB(130, 130, 130)
+    resetBox.TextSize = 16
+    resetBox.Font = Enum.Font.GothamMedium
+    resetBox.TextXAlignment = Enum.TextXAlignment.Center
+    resetBox.ClearTextOnFocus = false
+
+    local resetCorner = Instance.new("UICorner")
+    resetCorner.CornerRadius = UDim.new(0, 10)
+    resetCorner.Parent = resetBox
+
+    -- Кнопка сброса
+    local resetBtn = Instance.new("TextButton")
+    resetBtn.Parent = mainFrame
+    resetBtn.Size = UDim2.new(0.4, 0, 0, 40)
+    resetBtn.Position = UDim2.new(0.3, 0, 0, 145)
+    resetBtn.BackgroundColor3 = Color3.fromRGB(200, 50, 50)
+    resetBtn.BorderSizePixel = 0
+    resetBtn.Text = "🔄 Сбросить HWID"
+    resetBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+    resetBtn.TextSize = 16
+    resetBtn.Font = Enum.Font.GothamBold
+
+    local resetCorner2 = Instance.new("UICorner")
+    resetCorner2.CornerRadius = UDim.new(0, 10)
+    resetCorner2.Parent = resetBtn
+
+    -- Статус
+    local statusLabel = Instance.new("TextLabel")
+    statusLabel.Parent = mainFrame
+    statusLabel.Size = UDim2.new(0.9, 0, 0, 25)
+    statusLabel.Position = UDim2.new(0.05, 0, 0, 200)
+    statusLabel.BackgroundTransparency = 1
+    statusLabel.Text = ""
+    statusLabel.TextColor3 = Color3.fromRGB(0, 255, 0)
+    statusLabel.TextSize = 14
+    statusLabel.Font = Enum.Font.Gotham
+    statusLabel.TextXAlignment = Enum.TextXAlignment.Center
+
+    -- Список активированных ключей
+    local listLabel = Instance.new("TextLabel")
+    listLabel.Parent = mainFrame
+    listLabel.Size = UDim2.new(0.9, 0, 0, 20)
+    listLabel.Position = UDim2.new(0.05, 0, 0, 240)
+    listLabel.BackgroundTransparency = 1
+    listLabel.Text = "Активированные ключи:"
+    listLabel.TextColor3 = Color3.fromRGB(200, 200, 200)
+    listLabel.TextSize = 12
+    listLabel.Font = Enum.Font.GothamBold
+    listLabel.TextXAlignment = Enum.TextXAlignment.Center
+
+    local keyList = Instance.new("ScrollingFrame")
+    keyList.Parent = mainFrame
+    keyList.Size = UDim2.new(0.9, 0, 0, 80)
+    keyList.Position = UDim2.new(0.05, 0, 0, 265)
+    keyList.BackgroundColor3 = Color3.fromRGB(30, 30, 35)
+    keyList.BorderSizePixel = 0
+    keyList.ScrollBarThickness = 4
     
+    local listCorner = Instance.new("UICorner")
+    listCorner.CornerRadius = UDim.new(0, 8)
+    listCorner.Parent = keyList
+
+    local listContainer = Instance.new("Frame")
+    listContainer.Parent = keyList
+    listContainer.Size = UDim2.new(1, 0, 0, 0)
+    listContainer.BackgroundTransparency = 1
+
     -- Кнопка закрытия
     local closeBtn = Instance.new("TextButton")
     closeBtn.Parent = mainFrame
@@ -180,83 +515,93 @@ local function CreateLoginMenu()
     closeBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
     closeBtn.TextSize = 18
     closeBtn.Font = Enum.Font.GothamBold
-    
+
     local closeCorner = Instance.new("UICorner")
     closeCorner.CornerRadius = UDim.new(0, 8)
     closeCorner.Parent = closeBtn
-    
+
     closeBtn.MouseButton1Click:Connect(function()
         screenGui:Destroy()
+        CreateLoginGUI()
     end)
-    
+
     -- ============================================
-    -- ПРОВЕРКА ПАРОЛЯ (ПАРОЛЬ НЕ ВЫВОДИТСЯ)
+    -- ОБНОВЛЕНИЕ СПИСКА КЛЮЧЕЙ
     -- ============================================
-    
-    local function CheckCode()
-        local inputCode = codeBox.Text
-        if inputCode == CONFIG.Password then
-            errorLabel.Text = "✅ Пароль верный!"
-            errorLabel.TextColor3 = Color3.fromRGB(0, 255, 0)
-            confirmBtn.BackgroundColor3 = Color3.fromRGB(0, 200, 0)
-            confirmBtn.Text = "✅ ОТКРЫТО!"
-            
-            task.wait(0.3)
-            
-            -- Закрываем меню входа
-            CloseGUI(screenGui, function()
-                -- Загружаем меню скриптов с GitHub
-                local menuScript = LoadScriptFromGithub(CONFIG.Scripts.Menu)
-                if menuScript then
-                    loadstring(menuScript)()
-                else
-                    local errorGui = Instance.new("ScreenGui")
-                    errorGui.Parent = CoreGui
-                    local errorFrame = Instance.new("Frame")
-                    errorFrame.Parent = errorGui
-                    errorFrame.Size = UDim2.new(0, 400, 0, 100)
-                    errorFrame.Position = UDim2.new(0.5, -200, 0.5, -50)
-                    errorFrame.BackgroundColor3 = Color3.fromRGB(200, 50, 50)
-                    errorFrame.BorderSizePixel = 0
-                    local errorCorner = Instance.new("UICorner")
-                    errorCorner.CornerRadius = UDim.new(0, 12)
-                    errorCorner.Parent = errorFrame
-                    local errorText = Instance.new("TextLabel")
-                    errorText.Parent = errorFrame
-                    errorText.Size = UDim2.new(1, 0, 1, 0)
-                    errorText.BackgroundTransparency = 1
-                    errorText.Text = "❌ Ошибка загрузки меню!\nПроверьте интернет или ссылку"
-                    errorText.TextColor3 = Color3.fromRGB(255, 255, 255)
-                    errorText.TextSize = 16
-                    errorText.Font = Enum.Font.GothamBold
-                    errorText.TextWrapped = true
-                    task.wait(3)
-                    errorGui:Destroy()
-                end
-            end)
-        else
-            errorLabel.Text = "❌ Неверный пароль!"
-            errorLabel.TextColor3 = Color3.fromRGB(255, 50, 50)
-            codeBox.Text = ""
-            task.wait(0.5)
-            errorLabel.Text = ""
-            codeBox.PlaceholderText = "🔑 Введите пароль..."
+
+    local function UpdateKeyList()
+        listContainer:ClearAllChildren()
+        local yPos = 5
+        local count = 0
+        
+        for key, hwid in pairs(ActivatedKeys) do
+            local label = Instance.new("TextLabel")
+            label.Parent = listContainer
+            label.Size = UDim2.new(1, 0, 0, 20)
+            label.Position = UDim2.new(0, 0, 0, yPos)
+            label.BackgroundTransparency = 1
+            label.Text = key .. " → " .. string.sub(hwid, 1, 15) .. "..."
+            label.TextColor3 = Color3.fromRGB(200, 200, 200)
+            label.TextSize = 11
+            label.Font = Enum.Font.Gotham
+            label.TextXAlignment = Enum.TextXAlignment.Left
+            yPos = yPos + 22
+            count = count + 1
         end
+        
+        if count == 0 then
+            local label = Instance.new("TextLabel")
+            label.Parent = listContainer
+            label.Size = UDim2.new(1, 0, 0, 20)
+            label.Position = UDim2.new(0, 0, 0, 5)
+            label.BackgroundTransparency = 1
+            label.Text = "Нет активированных ключей"
+            label.TextColor3 = Color3.fromRGB(150, 150, 150)
+            label.TextSize = 12
+            label.Font = Enum.Font.Gotham
+            label.TextXAlignment = Enum.TextXAlignment.Center
+            yPos = 30
+        end
+        
+        listContainer.Size = UDim2.new(1, 0, 0, yPos + 10)
+        keyList.CanvasSize = UDim2.new(0, 0, 0, yPos + 15)
     end
-    
-    confirmBtn.MouseButton1Click:Connect(CheckCode)
-    
-    codeBox.FocusLost:Connect(function(enterPressed)
-        if enterPressed then
-            CheckCode()
+
+    -- ============================================
+    -- ЛОГИКА СБРОСА
+    -- ============================================
+
+    resetBtn.MouseButton1Click:Connect(function()
+        local key = resetBox.Text
+        if key and key ~= "" then
+            local success, msg = ResetKey(key)
+            if success then
+                statusLabel.Text = "✅ " .. msg
+                statusLabel.TextColor3 = Color3.fromRGB(0, 255, 0)
+                resetBox.Text = ""
+                UpdateKeyList()
+            else
+                statusLabel.Text = "❌ " .. msg
+                statusLabel.TextColor3 = Color3.fromRGB(255, 50, 50)
+            end
+            task.wait(2)
+            statusLabel.Text = ""
+        else
+            statusLabel.Text = "❌ Введите ключ для сброса!"
+            statusLabel.TextColor3 = Color3.fromRGB(255, 50, 50)
+            task.wait(2)
+            statusLabel.Text = ""
         end
     end)
-    
-    -- Анимация появления
-    mainFrame.BackgroundTransparency = 1
-    local tween = TweenService:Create(mainFrame, TweenInfo.new(0.4, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), {
-        BackgroundTransparency = 0
-    })
-    tween:Play()
+
+    -- Обновляем список
+    UpdateKeyList()
 end
-CreateLoginMenu()
+
+-- ============================================
+-- ЗАПУСК
+-- ============================================
+
+print("🏆 HERRICRAFT HUB загружен!")
+print("📌 Введите ключ для доступа")
+CreateLoginGUI()
