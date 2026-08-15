@@ -11,100 +11,26 @@ local player = Players.LocalPlayer
 
 -- ============================================
 -- ============================================
--- НАСТРОЙКИ GITHUB (ТВОИ ДАННЫЕ)
+-- НАСТРОЙКИ
 -- ============================================
 -- ============================================
 
-local GITHUB_TOKEN = "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"
 local REPO_OWNER = "setertop92222-beep"
 local REPO_NAME = "HeriCraft_HUB"
-local FILE_PATH = "keys.lua"
 local BRANCH = "main"
 
-local KEYS_URL = "https://raw.githubusercontent.com/" .. REPO_OWNER .. "/" .. REPO_NAME .. "/" .. BRANCH .. "/" .. FILE_PATH
-local API_URL = "https://api.github.com/repos/" .. REPO_OWNER .. "/" .. REPO_NAME .. "/contents/" .. FILE_PATH
+-- ССЫЛКА НА ФАЙЛ С КЛЮЧАМИ (GitHub)
+local KEYS_URL = "https://raw.githubusercontent.com/" .. REPO_OWNER .. "/" .. REPO_NAME .. "/" .. BRANCH .. "/keys.lua"
+
+-- ЛОКАЛЬНЫЙ ФАЙЛ ДЛЯ АКТИВАЦИЙ
+local ACTIVATIONS_FILE = "Hericraft_Activations.txt"
 
 -- ============================================
 -- ============================================
--- РУЧНАЯ ФУНКЦИЯ BASE64
+-- ЗАГРУЗКА КЛЮЧЕЙ С GITHUB
 -- ============================================
 -- ============================================
 
-local function Base64Encode(data)
-    local b64chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/'
-    local b64 = {}
-    
-    for i = 1, #data, 3 do
-        local a, b, c = string.byte(data, i, i+2)
-        a = a or 0
-        b = b or 0
-        c = c or 0
-        
-        local n = a * 0x10000 + b * 0x100 + c
-        local chars = {
-            b64chars:sub(math.floor(n / 0x40000) + 1, math.floor(n / 0x40000) + 1),
-            b64chars:sub(math.floor(n % 0x40000 / 0x1000) + 1, math.floor(n % 0x40000 / 0x1000) + 1),
-            b64chars:sub(math.floor(n % 0x1000 / 0x40) + 1, math.floor(n % 0x1000 / 0x40) + 1),
-            b64chars:sub(n % 0x40 + 1, n % 0x40 + 1)
-        }
-        
-        if not c then
-            chars[4] = '='
-            if not b then
-                chars[3] = '='
-            end
-        end
-        
-        table.insert(b64, table.concat(chars))
-    end
-    
-    return table.concat(b64)
-end
-
--- ============================================
--- ============================================
--- УНИВЕРСАЛЬНАЯ ФУНКЦИЯ ЗАПРОСА
--- ============================================
--- ============================================
-
-local function SendRequest(url, method, headers, body)
-    -- Пробуем разные способы отправки запросов
-    local requestFunc = syn and syn.request or request or http and http.request or http_request
-    
-    if not requestFunc then
-        print("❌ Ваш эксплойт не поддерживает HTTP-запросы!")
-        return nil
-    end
-    
-    local args = {
-        Url = url,
-        Method = method or "GET",
-        Headers = headers or {},
-    }
-    
-    if body then
-        args.Body = body
-    end
-    
-    local success, result = pcall(function()
-        return requestFunc(args)
-    end)
-    
-    if success then
-        return result
-    else
-        print("❌ Ошибка запроса: " .. tostring(result))
-        return nil
-    end
-end
-
--- ============================================
--- ============================================
--- ФУНКЦИИ ДЛЯ РАБОТЫ С GITHUB
--- ============================================
--- ============================================
-
--- 1. ЗАГРУЗКА КЛЮЧЕЙ
 local KeysData = {}
 
 local function LoadKeysFromGitHub()
@@ -126,53 +52,41 @@ local function LoadKeysFromGitHub()
     return false
 end
 
--- 2. ПОЛУЧИТЬ SHA ФАЙЛА
-local function GetFileSHA()
-    local result = SendRequest(API_URL, "GET")
-    if not result then 
-        print("❌ Не удалось получить SHA!")
-        return nil 
+-- ============================================
+-- ============================================
+-- РАБОТА С ЛОКАЛЬНЫМ ФАЙЛОМ АКТИВАЦИЙ
+-- ============================================
+-- ============================================
+
+local function LoadActivations()
+    local data = {}
+    local success, content = pcall(function()
+        return readfile(ACTIVATIONS_FILE)
+    end)
+    if success and content then
+        for entry in string.gmatch(content, "([^;]+)") do
+            local key, hwid = string.match(entry, "([^:]+):([^:]+)")
+            if key and hwid then
+                data[key] = hwid
+            end
+        end
     end
-    
-    local data = HttpService:JSONDecode(result.Body)
-    return data.sha
+    return data
 end
 
--- 3. ОБНОВЛЕНИЕ ФАЙЛА НА GITHUB
-local function UpdateKeysOnGitHub(newContent)
-    local sha = GetFileSHA()
-    if not sha then
-        print("❌ Не удалось получить SHA!")
-        return false
+local function SaveActivation(key, hwid)
+    local data = LoadActivations()
+    data[key] = hwid
+    
+    local content = ""
+    for k, v in pairs(data) do
+        content = content .. k .. ":" .. v .. ";"
     end
-    
-    local encodedContent = Base64Encode(newContent)
-    
-    local payload = {
-        message = "Обновление HWID",
-        content = encodedContent,
-        sha = sha,
-        branch = BRANCH
-    }
-    
-    local headers = {
-        ["Authorization"] = "token " .. GITHUB_TOKEN,
-        ["Content-Type"] = "application/json"
-    }
-    
-    local result = SendRequest(API_URL, "PUT", headers, HttpService:JSONEncode(payload))
-    
-    if result and result.StatusCode == 200 then
-        print("✅ Файл обновлён на GitHub!")
-        return true
-    else
-        print("❌ Ошибка обновления!")
-        if result then
-            print("   Статус: " .. tostring(result.StatusCode))
-            print("   Ответ: " .. tostring(result.Body))
-        end
-        return false
-    end
+    pcall(function()
+        writefile(ACTIVATIONS_FILE, content)
+    end)
+    print("✅ Сохранено локально: " .. key .. " → " .. hwid)
+    return true
 end
 
 -- ============================================
@@ -345,7 +259,7 @@ local function CreateLoginGUI()
             return
         end
         
-        -- 1. Проверяем, есть ли ключ
+        -- 1. Проверяем, есть ли ключ в списке
         local foundKey = FindKey(inputKey)
         if not foundKey then
             errorLabel.Text = "❌ Ключ не найден!"
@@ -356,9 +270,12 @@ local function CreateLoginGUI()
             return
         end
         
-        -- 2. Проверяем, использован ли ключ
-        if foundKey.used and foundKey.hwid ~= "" then
-            if foundKey.hwid == hwid then
+        -- 2. Проверяем локальный файл активаций
+        local activations = LoadActivations()
+        local savedHwid = activations[inputKey]
+        
+        if savedHwid then
+            if savedHwid == hwid then
                 -- Тот же пользователь — доступ разрешён
                 errorLabel.Text = "✅ Доступ разрешён!"
                 errorLabel.TextColor3 = Color3.fromRGB(0, 255, 0)
@@ -379,42 +296,21 @@ local function CreateLoginGUI()
             end
         end
         
-        -- 3. Ключ свободен — активируем
-        foundKey.used = true
-        foundKey.hwid = hwid
+        -- 3. Ключ свободен — активируем локально
+        SaveActivation(inputKey, hwid)
         
-        -- Формируем новое содержимое keys.lua
-        local newContent = "return {\n"
-        for _, k in ipairs(KeysData) do
-            local usedStr = k.used and "true" or "false"
-            newContent = newContent .. "    { key = \"" .. k.key .. "\", used = " .. usedStr .. ", hwid = \"" .. (k.hwid or "") .. "\" },\n"
-        end
-        newContent = newContent .. "}"
+        errorLabel.Text = "✅ Ключ активирован!"
+        errorLabel.TextColor3 = Color3.fromRGB(0, 255, 0)
+        confirmBtn.BackgroundColor3 = Color3.fromRGB(0, 200, 0)
+        confirmBtn.Text = "✅ ОТКРЫТО!"
         
-        -- Обновляем на GitHub
-        print("📤 Обновление keys.lua на GitHub...")
-        local success = UpdateKeysOnGitHub(newContent)
+        print("🔑 Активирован ключ: " .. inputKey)
+        print("🆔 HWID: " .. hwid)
+        print("👤 Игрок: " .. player.Name)
         
-        if success then
-            errorLabel.Text = "✅ Ключ активирован!"
-            errorLabel.TextColor3 = Color3.fromRGB(0, 255, 0)
-            confirmBtn.BackgroundColor3 = Color3.fromRGB(0, 200, 0)
-            confirmBtn.Text = "✅ ОТКРЫТО!"
-            
-            print("🔑 Активирован ключ: " .. inputKey)
-            print("🆔 HWID: " .. hwid)
-            print("👤 Игрок: " .. player.Name)
-            
-            task.wait(0.5)
-            screenGui:Destroy()
-            LoadScriptMenu()
-        else
-            errorLabel.Text = "❌ Ошибка сохранения на GitHub!"
-            errorLabel.TextColor3 = Color3.fromRGB(255, 50, 50)
-            codeBox.Text = ""
-            task.wait(2)
-            errorLabel.Text = ""
-        end
+        task.wait(0.5)
+        screenGui:Destroy()
+        LoadScriptMenu()
     end
 
     confirmBtn.MouseButton1Click:Connect(CheckKey)
@@ -424,17 +320,17 @@ local function CreateLoginGUI()
 end
 
 -- ============================================
--- ПРОВЕРКА ПОДКЛЮЧЕНИЯ К GITHUB
+-- ПРОВЕРКА
 -- ============================================
 
-local function TestGitHubConnection()
-    print("🔍 Проверка подключения к GitHub...")
-    local sha = GetFileSHA()
-    if sha then
-        print("✅ Подключение к GitHub работает!")
+local function TestConnection()
+    print("🔍 Проверка загрузки ключей...")
+    local success = LoadKeysFromGitHub()
+    if success then
+        print("✅ Ключи загружены!")
         return true
     else
-        print("❌ Не удалось подключиться к GitHub!")
+        print("❌ Не удалось загрузить ключи!")
         return false
     end
 end
@@ -448,7 +344,6 @@ print("📥 Загрузка ключей...")
 
 local success = LoadKeysFromGitHub()
 if success then
-    TestGitHubConnection()
     print("📌 Введите ключ для доступа")
     CreateLoginGUI()
 else
