@@ -41,70 +41,17 @@ local function LoadKeysFromGitHub()
 end
 
 -- ============================================
--- ============================================
--- ОБНОВЛЕНИЕ ФАЙЛА НА GITHUB
--- ============================================
--- ============================================
-
-local GITHUB_TOKEN = "ghp_ТВОЙ_ТОКЕН"  -- Твой Personal Access Token
-local REPO_OWNER = "setertop92222-beep"
-local REPO_NAME = "HeriCraft_HUB"
-local FILE_PATH = "keys.lua"
-local BRANCH = "main"
-
-local function UpdateKeysOnGitHub(newContent)
-    local url = "https://api.github.com/repos/" .. REPO_OWNER .. "/" .. REPO_NAME .. "/contents/" .. FILE_PATH
-    
-    -- Сначала получаем SHA файла
-    local success, result = pcall(function()
-        return game:HttpGet(url)
-    end)
-    if not success then return false end
-    
-    local data = HttpService:JSONDecode(result)
-    local sha = data.sha
-    
-    -- Формируем запрос на обновление
-    local payload = {
-        message = "Обновление HWID",
-        content = HttpService:Base64Encode(newContent),
-        sha = sha,
-        branch = BRANCH
-    }
-    
-    local headers = {
-        ["Authorization"] = "token " .. GITHUB_TOKEN,
-        ["Content-Type"] = "application/json"
-    }
-    
-    local updateSuccess, updateResult = pcall(function()
-        return syn.request({
-            Url = url,
-            Method = "PUT",
-            Headers = headers,
-            Body = HttpService:JSONEncode(payload)
-        })
-    end)
-    
-    return updateSuccess
-end
-
--- ============================================
--- ============================================
 -- ПОЛУЧЕНИЕ HWID
--- ============================================
 -- ============================================
 
 local function GetHWID()
     local userId = player.UserId
     local platform = UserInputService:GetPlatform()
     return tostring(userId) .. "_" .. tostring(platform)
-}
+end
 
 -- ============================================
--- ============================================
 -- ПОИСК КЛЮЧА В СПИСКЕ
--- ============================================
 -- ============================================
 
 local function FindKeyData(key)
@@ -117,83 +64,51 @@ local function FindKeyData(key)
 end
 
 -- ============================================
--- ============================================
--- ПРОВЕРКА И АКТИВАЦИЯ КЛЮЧА
--- ============================================
+-- ПРОВЕРКА HWID В СПИСКЕ
 -- ============================================
 
-local function CheckAndActivateKey(inputKey, hwid)
-    -- 1. Ищем ключ
-    local keyData = FindKeyData(inputKey)
+local function IsHWIDInList(key, hwid)
+    local keyData = FindKeyData(key)
     if not keyData then
-        return false, "❌ Ключ не найден!"
+        return false, "Ключ не найден!"
     end
     
-    -- 2. Проверяем, не активирован ли уже этот ключ на этом устройстве
-    local currentActivations = 0
     if keyData.hwids then
         for _, savedHwid in ipairs(keyData.hwids) do
             if savedHwid == hwid then
-                return true, "✅ Доступ разрешён!"
+                return true, "Доступ разрешён!"
             end
         end
-        currentActivations = #keyData.hwids
     end
     
-    -- 3. Проверяем лимит активаций
+    -- Проверяем лимит активаций
+    local currentActivations = keyData.hwids and #keyData.hwids or 0
     if currentActivations >= keyData.max_activations then
-        return false, "❌ Достигнут лимит активаций! (" .. keyData.max_activations .. ")"
+        return false, "Достигнут лимит активаций! (" .. keyData.max_activations .. ")"
     end
     
-    -- 4. Добавляем новый HWID
-    if not keyData.hwids then
-        keyData.hwids = {}
-    end
-    table.insert(keyData.hwids, hwid)
-    
-    -- 5. Обновляем файл на GitHub
-    local newContent = "return {\n"
-    for _, k in ipairs(KeysData) do
-        newContent = newContent .. "    { key = \"" .. k.key .. "\", max_activations = " .. k.max_activations .. ", hwids = {"
-        if k.hwids then
-            local hwidsStr = ""
-            for i, h in ipairs(k.hwids) do
-                if i > 1 then hwidsStr = hwidsStr .. ", "
-                end
-                hwidsStr = hwidsStr .. "\"" .. h .. "\""
-            end
-            newContent = newContent .. hwidsStr
-        end
-        newContent = newContent .. "} },\n"
-    end
-    newContent = newContent .. "}"
-    
-    local success = UpdateKeysOnGitHub(newContent)
-    if not success then
-        return false, "❌ Ошибка сохранения на GitHub!"
-    end
-    
-    return true, "✅ Ключ активирован! (" .. (currentActivations + 1) .. "/" .. keyData.max_activations .. ")"
+    return false, "HWID не найден, но есть место"
 end
 
 -- ============================================
--- ============================================
--- GUI ВХОДА
--- ============================================
+-- ЗАГРУЗКА МЕНЮ СКРИПТОВ
 -- ============================================
 
-local function LoadMainMenu()
-    local url = "https://raw.githubusercontent.com/setertop92222-beep/HeriCraft_HUB/refs/heads/main/HeriCraft_MENU.lua"
+local function LoadScriptMenu()
+    local url = https://raw.githubusercontent.com/setertop92222-beep/HeriCraft_HUB/refs/heads/main/HeriCraft_MENU.lua"
     local success, result = pcall(function()
         return game:HttpGet(url)
     end)
     if success and result then
         loadstring(result)()
-        print("✅ Меню загружено!")
     else
         print("❌ Ошибка загрузки меню!")
     end
 end
+
+-- ============================================
+-- GUI ВХОДА
+-- ============================================
 
 local function CreateLoginGUI()
     for _, gui in ipairs(CoreGui:GetChildren()) do
@@ -211,7 +126,7 @@ local function CreateLoginGUI()
     mainFrame.Parent = screenGui
     mainFrame.Size = UDim2.new(0, 420, 0, 320)
     mainFrame.Position = UDim2.new(0.5, -210, 0.5, -160)
-    mainFrame.BackgroundColor3 = Color3.fromRGB(18, 18, 22)
+    mainFrame.BackgroundColor3 = Color3.fromRGB(25, 25, 30)
     mainFrame.BorderSizePixel = 0
     mainFrame.Active = true
     mainFrame.Draggable = true
@@ -220,6 +135,7 @@ local function CreateLoginGUI()
     corner.CornerRadius = UDim.new(0, 16)
     corner.Parent = mainFrame
 
+    -- Заголовок
     local title = Instance.new("TextLabel")
     title.Parent = mainFrame
     title.Size = UDim2.new(1, 0, 0, 60)
@@ -231,6 +147,7 @@ local function CreateLoginGUI()
     title.Font = Enum.Font.GothamBold
     title.TextXAlignment = Enum.TextXAlignment.Center
 
+    -- Подзаголовок
     local subtitle = Instance.new("TextLabel")
     subtitle.Parent = mainFrame
     subtitle.Size = UDim2.new(1, 0, 0, 25)
@@ -242,6 +159,7 @@ local function CreateLoginGUI()
     subtitle.Font = Enum.Font.Gotham
     subtitle.TextXAlignment = Enum.TextXAlignment.Center
 
+    -- Поле ввода
     local codeBox = Instance.new("TextBox")
     codeBox.Parent = mainFrame
     codeBox.Size = UDim2.new(0.6, 0, 0, 45)
@@ -261,6 +179,7 @@ local function CreateLoginGUI()
     codeCorner.CornerRadius = UDim.new(0, 10)
     codeCorner.Parent = codeBox
 
+    -- Кнопка входа
     local confirmBtn = Instance.new("TextButton")
     confirmBtn.Parent = mainFrame
     confirmBtn.Size = UDim2.new(0.4, 0, 0, 45)
@@ -276,6 +195,7 @@ local function CreateLoginGUI()
     btnCorner.CornerRadius = UDim.new(0, 10)
     btnCorner.Parent = confirmBtn
 
+    -- Ошибка
     local errorLabel = Instance.new("TextLabel")
     errorLabel.Parent = mainFrame
     errorLabel.Size = UDim2.new(1, 0, 0, 25)
@@ -287,6 +207,7 @@ local function CreateLoginGUI()
     errorLabel.Font = Enum.Font.Gotham
     errorLabel.TextXAlignment = Enum.TextXAlignment.Center
 
+    -- Кнопка закрытия
     local closeBtn = Instance.new("TextButton")
     closeBtn.Parent = mainFrame
     closeBtn.Size = UDim2.new(0, 32, 0, 32)
@@ -307,14 +228,16 @@ local function CreateLoginGUI()
     end)
 
     -- ============================================
-    -- ПРОВЕРКА КЛЮЧА
+    -- ============================================
+    -- ПРОВЕРКА КЛЮЧА И HWID
+    -- ============================================
     -- ============================================
 
     local function CheckKey()
-        local input = codeBox.Text
+        local inputKey = codeBox.Text
         local hwid = GetHWID()
         
-        if input == "" then
+        if inputKey == "" then
             errorLabel.Text = "❌ Введите ключ!"
             errorLabel.TextColor3 = Color3.fromRGB(255, 50, 50)
             task.wait(1)
@@ -322,23 +245,45 @@ local function CreateLoginGUI()
             return
         end
         
-        local access, message = CheckAndActivateKey(input, hwid)
+        -- 1. Проверяем, есть ли ключ в списке
+        local keyData = FindKeyData(inputKey)
+        if not keyData then
+            errorLabel.Text = "❌ Ключ не найден!"
+            errorLabel.TextColor3 = Color3.fromRGB(255, 50, 50)
+            codeBox.Text = ""
+            task.wait(1.5)
+            errorLabel.Text = ""
+            return
+        end
         
-        if access then
-            errorLabel.Text = message
+        -- 2. Проверяем, есть ли HWID в списке для этого ключа
+        local found, msg = IsHWIDInList(inputKey, hwid)
+        
+        if found then
+            -- HWID найден → доступ разрешён
+            errorLabel.Text = "✅ " .. msg
             errorLabel.TextColor3 = Color3.fromRGB(0, 255, 0)
             confirmBtn.BackgroundColor3 = Color3.fromRGB(0, 200, 0)
             confirmBtn.Text = "✅ ОТКРЫТО!"
             
             task.wait(0.5)
             screenGui:Destroy()
-            LoadMainMenu()
+            LoadScriptMenu()
         else
-            errorLabel.Text = message
-            errorLabel.TextColor3 = Color3.fromRGB(255, 50, 50)
-            codeBox.Text = ""
-            task.wait(1.5)
-            errorLabel.Text = ""
+            -- HWID не найден или ключ заполнен
+            if string.find(msg, "Достигнут лимит") then
+                errorLabel.Text = "❌ " .. msg
+                errorLabel.TextColor3 = Color3.fromRGB(255, 50, 50)
+                codeBox.Text = ""
+                task.wait(1.5)
+                errorLabel.Text = ""
+            else
+                -- Есть место для активации
+                errorLabel.Text = "⚠️ Ключ найден, но HWID не в списке"
+                errorLabel.TextColor3 = Color3.fromRGB(255, 200, 0)
+                task.wait(1.5)
+                errorLabel.Text = ""
+            end
         end
     end
 
