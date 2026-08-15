@@ -53,18 +53,28 @@ local function LoadKeysFromGitHub()
     return false
 end
 
--- 2. ОБНОВЛЕНИЕ ФАЙЛА НА GITHUB
-local function UpdateKeysOnGitHub(newContent)
-    -- Сначала получаем SHA файла
+-- 2. ПОЛУЧИТЬ SHA ФАЙЛА
+local function GetFileSHA()
     local success, result = pcall(function()
         return game:HttpGet(API_URL)
     end)
-    if not success then return false end
+    if not success then 
+        print("❌ Не удалось получить SHA!")
+        return nil 
+    end
     
     local data = HttpService:JSONDecode(result)
-    local sha = data.sha
+    return data.sha
+end
+
+-- 3. ОБНОВЛЕНИЕ ФАЙЛА НА GITHUB
+local function UpdateKeysOnGitHub(newContent)
+    local sha = GetFileSHA()
+    if not sha then
+        print("❌ Не удалось получить SHA!")
+        return false
+    end
     
-    -- Формируем запрос
     local payload = {
         message = "Обновление HWID",
         content = HttpService:Base64Encode(newContent),
@@ -86,7 +96,13 @@ local function UpdateKeysOnGitHub(newContent)
         })
     end)
     
-    return updateSuccess
+    if updateSuccess then
+        print("✅ Файл обновлён на GitHub!")
+        return true
+    else
+        print("❌ Ошибка обновления: " .. tostring(updateResult))
+        return false
+    end
 end
 
 -- ============================================
@@ -99,7 +115,7 @@ local function GetHWID()
     local userId = player.UserId
     local platform = UserInputService:GetPlatform()
     return tostring(userId) .. "_" .. tostring(platform)
-}
+end
 
 local function FindKey(key)
     for _, k in ipairs(KeysData) do
@@ -109,6 +125,12 @@ local function FindKey(key)
     end
     return nil
 end
+
+-- ============================================
+-- ============================================
+-- GUI ВХОДА
+-- ============================================
+-- ============================================
 
 local function LoadScriptMenu()
     local url = "https://raw.githubusercontent.com/" .. REPO_OWNER .. "/" .. REPO_NAME .. "/" .. BRANCH .. "/menu.lua"
@@ -121,12 +143,6 @@ local function LoadScriptMenu()
         print("❌ Ошибка загрузки меню!")
     end
 end
-
--- ============================================
--- ============================================
--- GUI ВХОДА
--- ============================================
--- ============================================
 
 local function CreateLoginGUI()
     for _, gui in ipairs(CoreGui:GetChildren()) do
@@ -165,7 +181,6 @@ local function CreateLoginGUI()
     title.Font = Enum.Font.GothamBold
     title.TextXAlignment = Enum.TextXAlignment.Center
 
-    -- Подзаголовок
     local subtitle = Instance.new("TextLabel")
     subtitle.Parent = mainFrame
     subtitle.Size = UDim2.new(1, 0, 0, 25)
@@ -177,7 +192,6 @@ local function CreateLoginGUI()
     subtitle.Font = Enum.Font.Gotham
     subtitle.TextXAlignment = Enum.TextXAlignment.Center
 
-    -- Поле ввода
     local codeBox = Instance.new("TextBox")
     codeBox.Parent = mainFrame
     codeBox.Size = UDim2.new(0.6, 0, 0, 45)
@@ -197,7 +211,6 @@ local function CreateLoginGUI()
     codeCorner.CornerRadius = UDim.new(0, 10)
     codeCorner.Parent = codeBox
 
-    -- Кнопка входа
     local confirmBtn = Instance.new("TextButton")
     confirmBtn.Parent = mainFrame
     confirmBtn.Size = UDim2.new(0.4, 0, 0, 45)
@@ -213,7 +226,6 @@ local function CreateLoginGUI()
     btnCorner.CornerRadius = UDim.new(0, 10)
     btnCorner.Parent = confirmBtn
 
-    -- Ошибка
     local errorLabel = Instance.new("TextLabel")
     errorLabel.Parent = mainFrame
     errorLabel.Size = UDim2.new(1, 0, 0, 25)
@@ -225,7 +237,6 @@ local function CreateLoginGUI()
     errorLabel.Font = Enum.Font.Gotham
     errorLabel.TextXAlignment = Enum.TextXAlignment.Center
 
-    -- Кнопка закрытия
     local closeBtn = Instance.new("TextButton")
     closeBtn.Parent = mainFrame
     closeBtn.Size = UDim2.new(0, 32, 0, 32)
@@ -277,7 +288,7 @@ local function CreateLoginGUI()
         -- 2. Проверяем, использован ли ключ
         if foundKey.used and foundKey.hwid ~= "" then
             if foundKey.hwid == hwid then
-                -- Тот же пользователь
+                -- Тот же пользователь — доступ разрешён
                 errorLabel.Text = "✅ Доступ разрешён!"
                 errorLabel.TextColor3 = Color3.fromRGB(0, 255, 0)
                 confirmBtn.BackgroundColor3 = Color3.fromRGB(0, 200, 0)
@@ -288,7 +299,6 @@ local function CreateLoginGUI()
                 LoadScriptMenu()
                 return
             else
-                -- Ключ занят другим
                 errorLabel.Text = "❌ Ключ уже используется!"
                 errorLabel.TextColor3 = Color3.fromRGB(255, 50, 50)
                 codeBox.Text = ""
@@ -299,18 +309,19 @@ local function CreateLoginGUI()
         end
         
         -- 3. Ключ свободен — активируем
-        -- Обновляем данные в памяти
         foundKey.used = true
         foundKey.hwid = hwid
         
         -- Формируем новое содержимое keys.lua
         local newContent = "return {\n"
         for _, k in ipairs(KeysData) do
-            newContent = newContent .. "    { key = \"" .. k.key .. "\", used = " .. tostring(k.used) .. ", hwid = \"" .. (k.hwid or "") .. "\" },\n"
+            local usedStr = k.used and "true" or "false"
+            newContent = newContent .. "    { key = \"" .. k.key .. "\", used = " .. usedStr .. ", hwid = \"" .. (k.hwid or "") .. "\" },\n"
         end
         newContent = newContent .. "}"
         
         -- Обновляем на GitHub
+        print("📤 Обновление keys.lua на GitHub...")
         local success = UpdateKeysOnGitHub(newContent)
         
         if success then
@@ -327,10 +338,10 @@ local function CreateLoginGUI()
             screenGui:Destroy()
             LoadScriptMenu()
         else
-            errorLabel.Text = "❌ Ошибка сохранения!"
+            errorLabel.Text = "❌ Ошибка сохранения на GitHub!"
             errorLabel.TextColor3 = Color3.fromRGB(255, 50, 50)
             codeBox.Text = ""
-            task.wait(1.5)
+            task.wait(2)
             errorLabel.Text = ""
         end
     end
@@ -342,6 +353,26 @@ local function CreateLoginGUI()
 end
 
 -- ============================================
+-- ПРОВЕРКА ПОДКЛЮЧЕНИЯ К GITHUB
+-- ============================================
+
+local function TestGitHubConnection()
+    print("🔍 Проверка подключения к GitHub...")
+    local sha = GetFileSHA()
+    if sha then
+        print("✅ Подключение к GitHub работает!")
+        return true
+    else
+        print("❌ Не удалось подключиться к GitHub!")
+        print("   Проверьте:")
+        print("   1. Токен (должен начинаться с ghp_)")
+        print("   2. Название репозитория")
+        print("   3. Название ветки (main или master)")
+        return false
+    end
+end
+
+-- ============================================
 -- ЗАПУСК
 -- ============================================
 
@@ -350,6 +381,7 @@ print("📥 Загрузка ключей...")
 
 local success = LoadKeysFromGitHub()
 if success then
+    TestGitHubConnection()
     print("📌 Введите ключ для доступа")
     CreateLoginGUI()
 else
