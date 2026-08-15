@@ -28,7 +28,7 @@ local player = Players.LocalPlayer
 
 local SCRIPTS = {
     -- ===== СКРИПТ 1 =====
-    {"MENU_ALL_GAMES", "https://raw.githubusercontent.com/setertop92222-beep/HeriCraft_HUB/refs/heads/main/HeriCraft_menu_all_all_games.lua"},
+    {"[FPS] One Tap", "https://raw.githubusercontent.com/setertop92222-beep/HeriCraft_HUB/refs/heads/main/%5BFPS%5D%20One%20Tap.lua"},
     
     -- ===== СКРИПТ 2 =====
     {"AIMBOT", "https://raw.githubusercontent.com/setertop92222-beep/HeriCraft_HUB/refs/heads/main/HeriCraft_AIMBOT.lua"},
