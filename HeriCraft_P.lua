@@ -1,5 +1,5 @@
 -- ============================================
--- HERRICRAFT HUB - МЕНЮ ВХОДА С HWID (GITHUB)
+-- HERRICRAFT HUB - МЕНЮ ВХОДА С HWID
 -- ============================================
 
 local Players = game:GetService("Players")
@@ -11,74 +11,26 @@ local player = Players.LocalPlayer
 
 -- ============================================
 -- ============================================
--- НАСТРОЙКИ GITHUB (ПО ОБРАЗЦУ)
+-- НАСТРОЙКИ GITHUB
 -- ============================================
 -- ============================================
 
+local GITHUB_TOKEN = "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"
+local REPO_OWNER = "setertop92222-beep"
+local REPO_NAME = "HeriCraft_HUB"
+local FILE_PATH = "keys.lua"
+local BRANCH = "main"
 
-local function GetFileSHA()
-    local URL = "https://api.github.com/repos/"..Username.."/"..Repository.."/contents/"..HttpService:UrlEncode(File_Name)
-    local success, result = pcall(function()
-        return game:HttpGet(URL)
-    end)
-    if success and result then
-        local data = HttpService:JSONDecode(result)
-        return data.sha
-    end
-    return nil
-end
-
-local function UpdateFileOnGitHub(newContent)
-    local sha = GetFileSHA()
-    if not sha then
-        print("❌ Не удалось получить SHA!")
-        return false
-    end
-    
-    local URL = "https://api.github.com/repos/"..Username.."/"..Repository.."/contents/"..HttpService:UrlEncode(File_Name)
-    
-    -- Кодируем в base64 (как в образце)
-    local encoded = HttpService:Base64Encode(newContent)
-    
-    local request_body = {
-        ["message"] = "Обновление HWID",
-        ["content"] = encoded,
-        ["sha"] = sha
-    }
-    
-    local request = syn and syn.request or request or http and http.request
-    if not request then
-        print("❌ request не найден!")
-        return false
-    end
-    
-    local response = request({
-        Url = URL,
-        Method = "PUT",
-        Headers = {
-            ["Content-Type"] = "application/json",
-            ["Authorization"] = "token "..Authentication
-        },
-        Body = HttpService:JSONEncode(request_body)
-    })
-    
-    if response and response.StatusCode == 200 or response.StatusCode == 201 then
-        print("✅ Файл обновлён на GitHub!")
-        return true
-    else
-        print("❌ Ошибка обновления! Код: " .. tostring(response and response.StatusCode))
-        return false
-    end
-end
+local KEYS_URL = "https://raw.githubusercontent.com/" .. REPO_OWNER .. "/" .. REPO_NAME .. "/" .. BRANCH .. "/" .. FILE_PATH
+local API_URL = "https://api.github.com/repos/" .. REPO_OWNER .. "/" .. REPO_NAME .. "/contents/" .. FILE_PATH
 
 -- ============================================
--- ЗАГРУЗКА КЛЮЧЕЙ С GITHUB
+-- ФУНКЦИИ ДЛЯ РАБОТЫ С GITHUB
 -- ============================================
 
 local KeysData = {}
 
 local function LoadKeysFromGitHub()
-    local KEYS_URL = "https://raw.githubusercontent.com/"..Username.."/"..Repository.."/main/"..File_Name
     local success, result = pcall(function()
         return game:HttpGet(KEYS_URL)
     end)
@@ -97,6 +49,67 @@ local function LoadKeysFromGitHub()
     return false
 end
 
+local function GetFileSHA()
+    local success, result = pcall(function()
+        return game:HttpGet(API_URL)
+    end)
+    if not success then 
+        print("❌ Не удалось получить SHA!")
+        return nil 
+    end
+    local data = HttpService:JSONDecode(result)
+    return data.sha
+end
+
+local function UpdateKeysOnGitHub()
+    local newContent = "return {\n"
+    for _, k in ipairs(KeysData) do
+        local hwidStr = k.hwid or ""
+        newContent = newContent .. "    { key = \"" .. k.key .. "\", max_activations = " .. (k.max_activations or 1) .. ", hwids = {"
+        
+        if type(k.hwids) == "table" and #k.hwids > 0 then
+            for i, h in ipairs(k.hwids) do
+                if i > 1 then newContent = newContent .. ", " end
+                newContent = newContent .. "\"" .. h .. "\""
+            end
+        end
+        newContent = newContent .. "} },\n"
+    end
+    newContent = newContent .. "}"
+    
+    local sha = GetFileSHA()
+    if not sha then return false end
+    
+    local payload = {
+        message = "Обновление HWID",
+        content = HttpService:Base64Encode(newContent),
+        sha = sha,
+        branch = BRANCH
+    }
+    
+    local headers = {
+        ["Authorization"] = "token " .. GITHUB_TOKEN,
+        ["Content-Type"] = "application/json"
+    }
+    
+    local updateSuccess, updateResult = pcall(function()
+        return syn.request({
+            Url = API_URL,
+            Method = "PUT",
+            Headers = headers,
+            Body = HttpService:JSONEncode(payload)
+        })
+    end)
+    
+    if updateSuccess then
+        print("✅ Файл обновлён на GitHub!")
+        return true
+    else
+        print("❌ Ошибка обновления: " .. tostring(updateResult))
+        return false
+    end
+end
+
 -- ============================================
 -- ПОЛУЧЕНИЕ HWID
 -- ============================================
@@ -108,21 +121,23 @@ local function GetHWID()
 end
 
 -- ============================================
--- ПРОВЕРКА: ЕСТЬ ЛИ У ИГРОКА УЖЕ АКТИВИРОВАННЫЙ КЛЮЧ
+-- ============================================
+-- ПРОВЕРКА И АКТИВАЦИЯ
+-- ============================================
 -- ============================================
 
 local function HasActivatedKey(hwid)
     for _, keyData in ipairs(KeysData) do
-        if keyData.hwid and keyData.hwid == hwid then
-            return true, keyData.key
+        if keyData.hwids then
+            for _, h in ipairs(keyData.hwids) do
+                if h == hwid then
+                    return true, keyData.key
+                end
+            end
         end
     end
     return false, nil
 end
-
--- ============================================
--- ПОИСК КЛЮЧА
--- ============================================
 
 local function FindKeyData(key)
     for _, k in ipairs(KeysData) do
@@ -133,52 +148,54 @@ local function FindKeyData(key)
     return nil
 end
 
--- ============================================
--- ============================================
--- ОСНОВНАЯ ФУНКЦИЯ ПРОВЕРКИ И АКТИВАЦИИ
--- ============================================
--- ============================================
-
 local function CheckAndActivateKey(inputKey, hwid)
-    -- 1. Проверяем, есть ли ключ в списке
+    -- 1. Проверяем, есть ли ключ
     local keyData = FindKeyData(inputKey)
     if not keyData then
         return false, "❌ Ключ не найден!"
     end
     
-    -- 2. Проверяем, не занят ли ключ
-    if keyData.hwid and keyData.hwid ~= "" then
-        if keyData.hwid == hwid then
-            return true, "✅ Доступ разрешён!"
-        else
-            return false, "❌ Ключ уже используется на другом устройстве!"
-        end
-    end
-    
-    -- 3. Проверяем, не активировал ли игрок уже другой ключ
+    -- 2. Проверяем, не активировал ли игрок уже другой ключ
     local hasKey, activatedKey = HasActivatedKey(hwid)
     if hasKey then
         return false, "❌ Ты уже активировал ключ! (только 1 ключ на устройство)"
     end
     
-    -- 4. Активируем ключ
-    keyData.hwid = hwid
-    
-    -- 5. Формируем новое содержимое keys.lua
-    local newContent = "return {\n"
-    for _, k in ipairs(KeysData) do
-        local hwidStr = k.hwid or ""
-        newContent = newContent .. "    { key = \"" .. k.key .. "\", hwid = \"" .. hwidStr .. "\" },\n"
+    -- 3. Проверяем, есть ли место
+    local currentActivations = 0
+    if keyData.hwids then
+        currentActivations = #keyData.hwids
     end
-    newContent = newContent .. "}"
     
-    -- 6. Обновляем на GitHub
-    local success = UpdateFileOnGitHub(newContent)
+    local maxActivations = keyData.max_activations or 1
+    local freeSlots = maxActivations - currentActivations
+    
+    if freeSlots <= 0 then
+        return false, "❌ Все места заняты! (максимум " .. maxActivations .. " активаций)"
+    end
+    
+    -- 4. Проверяем, не активирован ли уже этот ключ на этом устройстве
+    if keyData.hwids then
+        for _, h in ipairs(keyData.hwids) do
+            if h == hwid then
+                return true, "✅ Доступ разрешён!"
+            end
+        end
+    end
+    
+    -- 5. Активируем
+    if not keyData.hwids then
+        keyData.hwids = {}
+    end
+    table.insert(keyData.hwids, hwid)
+    
+    local success = UpdateKeysOnGitHub()
     if not success then
         return false, "❌ Ошибка сохранения на GitHub!"
     end
     
-    return true, "✅ Ключ активирован!"
+    local remaining = maxActivations - currentActivations - 1
+    return true, "✅ Ключ активирован! Осталось мест: " .. remaining
 end
 
 -- ============================================
@@ -186,7 +203,7 @@ end
 -- ============================================
 
 local function LoadDeviceMenu()
-    local url = "https://raw.githubusercontent.com/"..Username.."/"..Repository.."/main/device.lua"
+    local url = "https://raw.githubusercontent.com/" .. REPO_OWNER .. "/" .. REPO_NAME .. "/" .. BRANCH .. "/device.lua"
     local success, result = pcall(function()
         return game:HttpGet(url)
     end)
@@ -319,7 +336,7 @@ local function CreateLoginGUI()
     end)
 
     -- ============================================
-    -- ПРОВЕРКА КЛЮЧА + HWID
+    -- ПРОВЕРКА КЛЮЧА
     -- ============================================
 
     local function CheckKey()
