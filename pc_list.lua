@@ -26,10 +26,12 @@ local COLORS = {
 -- ============================================
 
 local SCRIPTS_PC = {
-    {"[FPS] One Tap", "https://raw.githubusercontent.com/setertop92222-beep/HeriCraft_HUB/refs/heads/main/%5BFPS%5D%20One%20Tap.lua"))()"},
+    -- ===== СКРИПТ 1 =====
+    {"[FPS] One Tap", "https://raw.githubusercontent.com/setertop92222-beep/HeriCraft_HUB/refs/heads/main/onetap.lua"},
+    -- ============================================
     -- ДОБАВЛЯЙ НОВЫЕ СКРИПТЫ СЮДА:
     -- ============================================
-    -- {"Название скрипта", "https://ссылка_на_скрипт.lua"},
+    -- {"Название скрипта", "https://raw.githubusercontent.com/ТВОЙ_АККАУНТ/РЕПО/main/скрипт.lua"},
 }
 
 -- ============================================
@@ -117,6 +119,7 @@ local function LoadScript(url, name)
         print("✅ " .. name .. " загружен!")
     else
         print("❌ Ошибка загрузки " .. name)
+        print("   Ссылка: " .. url)
     end
 end
 
