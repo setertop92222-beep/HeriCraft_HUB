@@ -1,24 +1,79 @@
 -- ============================================
--- HERRICRAFT HUB - МЕНЮ ВХОДА С HWID
+-- HERRICRAFT HUB - МЕНЮ ВХОДА С HWID (GITHUB)
 -- ============================================
 
 local Players = game:GetService("Players")
 local CoreGui = game:GetService("CoreGui")
 local TweenService = game:GetService("TweenService")
 local UserInputService = game:GetService("UserInputService")
+local HttpService = game:GetService("HttpService")
 local player = Players.LocalPlayer
 
 -- ============================================
--- ССЫЛКА НА ФАЙЛ С КЛЮЧАМИ (GitHub)
+-- ============================================
+-- НАСТРОЙКИ GITHUB (ПО ОБРАЗЦУ)
+-- ============================================
 -- ============================================
 
-local KEYS_URL = "https://raw.githubusercontent.com/setertop92222-beep/HeriCraft_HUB/refs/heads/main/keys.lua"
+local Authentication = "ghp_ТВОЙ_ТОКЕН"  -- ТВОЙ ТОКЕН
+local Username = "setertop92222-beep"
+local Repository = "HeriCraft_HUB"
+local File_Name = "keys.lua"
 
--- ============================================
--- ФАЙЛ ДЛЯ ХРАНЕНИЯ АКТИВИРОВАННЫХ КЛЮЧЕЙ (ЛОКАЛЬНО)
--- ============================================
+local function GetFileSHA()
+    local URL = "https://api.github.com/repos/"..Username.."/"..Repository.."/contents/"..HttpService:UrlEncode(File_Name)
+    local success, result = pcall(function()
+        return game:HttpGet(URL)
+    end)
+    if success and result then
+        local data = HttpService:JSONDecode(result)
+        return data.sha
+    end
+    return nil
+end
 
-local HWID_FILE = "Hericraft_Activations.txt"
+local function UpdateFileOnGitHub(newContent)
+    local sha = GetFileSHA()
+    if not sha then
+        print("❌ Не удалось получить SHA!")
+        return false
+    end
+    
+    local URL = "https://api.github.com/repos/"..Username.."/"..Repository.."/contents/"..HttpService:UrlEncode(File_Name)
+    
+    -- Кодируем в base64 (как в образце)
+    local encoded = HttpService:Base64Encode(newContent)
+    
+    local request_body = {
+        ["message"] = "Обновление HWID",
+        ["content"] = encoded,
+        ["sha"] = sha
+    }
+    
+    local request = syn and syn.request or request or http and http.request
+    if not request then
+        print("❌ request не найден!")
+        return false
+    end
+    
+    local response = request({
+        Url = URL,
+        Method = "PUT",
+        Headers = {
+            ["Content-Type"] = "application/json",
+            ["Authorization"] = "token "..Authentication
+        },
+        Body = HttpService:JSONEncode(request_body)
+    })
+    
+    if response and response.StatusCode == 200 or response.StatusCode == 201 then
+        print("✅ Файл обновлён на GitHub!")
+        return true
+    else
+        print("❌ Ошибка обновления! Код: " .. tostring(response and response.StatusCode))
+        return false
+    end
+end
 
 -- ============================================
 -- ЗАГРУЗКА КЛЮЧЕЙ С GITHUB
@@ -27,6 +82,7 @@ local HWID_FILE = "Hericraft_Activations.txt"
 local KeysData = {}
 
 local function LoadKeysFromGitHub()
+    local KEYS_URL = "https://raw.githubusercontent.com/"..Username.."/"..Repository.."/main/"..File_Name
     local success, result = pcall(function()
         return game:HttpGet(KEYS_URL)
     end)
@@ -46,40 +102,6 @@ local function LoadKeysFromGitHub()
 end
 
 -- ============================================
--- РАБОТА С ЛОКАЛЬНЫМ ФАЙЛОМ HWID
--- ============================================
-
-local function LoadActivations()
-    local data = {}
-    local success, content = pcall(function()
-        return readfile(HWID_FILE)
-    end)
-    if success and content then
-        for entry in string.gmatch(content, "([^;]+)") do
-            local key, hwid = string.match(entry, "([^:]+):([^:]+)")
-            if key and hwid then
-                data[key] = hwid
-            end
-        end
-    end
-    return data
-end
-
-local function SaveActivation(key, hwid)
-    local data = LoadActivations()
-    data[key] = hwid
-    
-    local content = ""
-    for k, v in pairs(data) do
-        content = content .. k .. ":" .. v .. ";"
-    end
-    pcall(function()
-        writefile(HWID_FILE, content)
-    end)
-    print("✅ Сохранено: " .. key .. " → " .. hwid)
-end
-
--- ============================================
 -- ПОЛУЧЕНИЕ HWID
 -- ============================================
 
@@ -90,32 +112,29 @@ local function GetHWID()
 end
 
 -- ============================================
--- ============================================
 -- ПРОВЕРКА: ЕСТЬ ЛИ У ИГРОКА УЖЕ АКТИВИРОВАННЫЙ КЛЮЧ
--- ============================================
 -- ============================================
 
 local function HasActivatedKey(hwid)
-    local activations = LoadActivations()
-    for key, savedHwid in pairs(activations) do
-        if savedHwid == hwid then
-            return true, key
+    for _, keyData in ipairs(KeysData) do
+        if keyData.hwid and keyData.hwid == hwid then
+            return true, keyData.key
         end
     end
     return false, nil
 end
 
 -- ============================================
--- ПРОВЕРКА: СУЩЕСТВУЕТ ЛИ КЛЮЧ
+-- ПОИСК КЛЮЧА
 -- ============================================
 
-local function FindKey(key)
+local function FindKeyData(key)
     for _, k in ipairs(KeysData) do
-        if k == key then
-            return true
+        if k.key == key then
+            return k
         end
     end
-    return false
+    return nil
 end
 
 -- ============================================
@@ -126,35 +145,43 @@ end
 
 local function CheckAndActivateKey(inputKey, hwid)
     -- 1. Проверяем, есть ли ключ в списке
-    if not FindKey(inputKey) then
+    local keyData = FindKeyData(inputKey)
+    if not keyData then
         return false, "❌ Ключ не найден!"
     end
     
-    -- 2. Проверяем локальный файл активаций
-    local activations = LoadActivations()
-    local savedHwid = activations[inputKey]
-    
-    if savedHwid then
-        if savedHwid == hwid then
+    -- 2. Проверяем, не занят ли ключ
+    if keyData.hwid and keyData.hwid ~= "" then
+        if keyData.hwid == hwid then
             return true, "✅ Доступ разрешён!"
         else
             return false, "❌ Ключ уже используется на другом устройстве!"
         end
     end
     
-    -- ============================================
-    -- ============================================
-    -- 3. ПРОВЕРЯЕМ, НЕ АКТИВИРОВАЛ ЛИ УЖЕ ИГРОК ДРУГОЙ КЛЮЧ
-    -- ============================================
-    -- ============================================
-    
+    -- 3. Проверяем, не активировал ли игрок уже другой ключ
     local hasKey, activatedKey = HasActivatedKey(hwid)
     if hasKey then
         return false, "❌ Ты уже активировал ключ! (только 1 ключ на устройство)"
     end
     
-    -- 4. Ключ свободен — активируем
-    SaveActivation(inputKey, hwid)
+    -- 4. Активируем ключ
+    keyData.hwid = hwid
+    
+    -- 5. Формируем новое содержимое keys.lua
+    local newContent = "return {\n"
+    for _, k in ipairs(KeysData) do
+        local hwidStr = k.hwid or ""
+        newContent = newContent .. "    { key = \"" .. k.key .. "\", hwid = \"" .. hwidStr .. "\" },\n"
+    end
+    newContent = newContent .. "}"
+    
+    -- 6. Обновляем на GitHub
+    local success = UpdateFileOnGitHub(newContent)
+    if not success then
+        return false, "❌ Ошибка сохранения на GitHub!"
+    end
+    
     return true, "✅ Ключ активирован!"
 end
 
@@ -163,7 +190,7 @@ end
 -- ============================================
 
 local function LoadDeviceMenu()
-    local url = "https://raw.githubusercontent.com/setertop92222-beep/HeriCraft_HUB/refs/heads/main/devase.lua"
+    local url = "https://raw.githubusercontent.com/"..Username.."/"..Repository.."/main/device.lua"
     local success, result = pcall(function()
         return game:HttpGet(url)
     end)
