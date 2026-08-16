@@ -15,10 +15,6 @@ local player = Players.LocalPlayer
 -- ============================================
 -- ============================================
 
-local Authentication = "ghp_ТВОЙ_ТОКЕН"  -- ТВОЙ ТОКЕН
-local Username = "setertop92222-beep"
-local Repository = "HeriCraft_HUB"
-local File_Name = "keys.lua"
 
 local function GetFileSHA()
     local URL = "https://api.github.com/repos/"..Username.."/"..Repository.."/contents/"..HttpService:UrlEncode(File_Name)
