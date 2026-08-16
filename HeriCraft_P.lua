@@ -1,16 +1,27 @@
 -- ============================================
--- HERRICRAFT HUB - МЕНЮ ВХОДА
+-- HERRICRAFT HUB - МЕНЮ ВХОДА С HWID
 -- ============================================
 
 local Players = game:GetService("Players")
 local CoreGui = game:GetService("CoreGui")
 local TweenService = game:GetService("TweenService")
+local UserInputService = game:GetService("UserInputService")
 local player = Players.LocalPlayer
+
+-- ============================================
+-- ССЫЛКА НА ФАЙЛ С КЛЮЧАМИ (GitHub)
+-- ============================================
 
 local KEYS_URL = "https://raw.githubusercontent.com/setertop92222-beep/HeriCraft_HUB/refs/heads/main/keys.lua"
 
 -- ============================================
--- ЗАГРУЗКА КЛЮЧЕЙ
+-- ФАЙЛ ДЛЯ ХРАНЕНИЯ АКТИВИРОВАННЫХ КЛЮЧЕЙ (ЛОКАЛЬНО)
+-- ============================================
+
+local HWID_FILE = "Hericraft_Activations.txt"
+
+-- ============================================
+-- ЗАГРУЗКА КЛЮЧЕЙ С GITHUB
 -- ============================================
 
 local KeysData = {}
@@ -35,12 +46,56 @@ local function LoadKeysFromGitHub()
 end
 
 -- ============================================
--- ПРОВЕРКА КЛЮЧА
+-- РАБОТА С ЛОКАЛЬНЫМ ФАЙЛОМ HWID
 -- ============================================
 
-local function CheckKey(inputKey)
+local function LoadActivations()
+    local data = {}
+    local success, content = pcall(function()
+        return readfile(HWID_FILE)
+    end)
+    if success and content then
+        for entry in string.gmatch(content, "([^;]+)") do
+            local key, hwid = string.match(entry, "([^:]+):([^:]+)")
+            if key and hwid then
+                data[key] = hwid
+            end
+        end
+    end
+    return data
+end
+
+local function SaveActivation(key, hwid)
+    local data = LoadActivations()
+    data[key] = hwid
+    
+    local content = ""
+    for k, v in pairs(data) do
+        content = content .. k .. ":" .. v .. ";"
+    end
+    pcall(function()
+        writefile(HWID_FILE, content)
+    end)
+    print("✅ Сохранено: " .. key .. " → " .. hwid)
+end
+
+-- ============================================
+-- ПОЛУЧЕНИЕ HWID
+-- ============================================
+
+local function GetHWID()
+    local userId = player.UserId
+    local platform = UserInputService:GetPlatform()
+    return tostring(userId) .. "_" .. tostring(platform)
+end
+
+-- ============================================
+-- ПОИСК КЛЮЧА В СПИСКЕ
+-- ============================================
+
+local function FindKey(key)
     for _, k in ipairs(KeysData) do
-        if k == inputKey then
+        if k == key then
             return true
         end
     end
@@ -48,10 +103,37 @@ local function CheckKey(inputKey)
 end
 
 -- ============================================
--- ЗАГРУЗКА МЕНЮ
+-- ПРОВЕРКА И АКТИВАЦИЯ КЛЮЧА
 -- ============================================
 
-local function LoadScriptMenu()
+local function CheckAndActivateKey(inputKey, hwid)
+    -- 1. Проверяем, есть ли ключ в списке
+    if not FindKey(inputKey) then
+        return false, "❌ Ключ не найден!"
+    end
+    
+    -- 2. Проверяем локальный файл активаций
+    local activations = LoadActivations()
+    local savedHwid = activations[inputKey]
+    
+    if savedHwid then
+        if savedHwid == hwid then
+            return true, "✅ Доступ разрешён!"
+        else
+            return false, "❌ Ключ уже используется на другом устройстве!"
+        end
+    end
+    
+    -- 3. Ключ свободен — активируем
+    SaveActivation(inputKey, hwid)
+    return true, "✅ Ключ активирован!"
+end
+
+-- ============================================
+-- ЗАГРУЗКА МЕНЮ ВЫБОРА УСТРОЙСТВА
+-- ============================================
+
+local function LoadDeviceMenu()
     local url = "https://raw.githubusercontent.com/setertop92222-beep/HeriCraft_HUB/refs/heads/main/devase.lua"
     local success, result = pcall(function()
         return game:HttpGet(url)
@@ -59,7 +141,7 @@ local function LoadScriptMenu()
     if success and result then
         loadstring(result)()
     else
-        print("❌ Ошибка загрузки меню!")
+        print("❌ Ошибка загрузки меню выбора устройства!")
     end
 end
 
@@ -185,11 +267,12 @@ local function CreateLoginGUI()
     end)
 
     -- ============================================
-    -- ПРОВЕРКА КЛЮЧА
+    -- ПРОВЕРКА КЛЮЧА + HWID
     -- ============================================
 
-    local function CheckEnteredKey()
+    local function CheckKey()
         local inputKey = codeBox.Text
+        local hwid = GetHWID()
         
         if inputKey == "" then
             errorLabel.Text = "❌ Введите ключ!"
@@ -199,17 +282,19 @@ local function CreateLoginGUI()
             return
         end
         
-        if CheckKey(inputKey) then
-            errorLabel.Text = "✅ Ключ верный!"
+        local access, message = CheckAndActivateKey(inputKey, hwid)
+        
+        if access then
+            errorLabel.Text = message
             errorLabel.TextColor3 = Color3.fromRGB(0, 255, 0)
             confirmBtn.BackgroundColor3 = Color3.fromRGB(0, 200, 0)
             confirmBtn.Text = "✅ ОТКРЫТО!"
             
             task.wait(0.5)
             screenGui:Destroy()
-            LoadScriptMenu()
+            LoadDeviceMenu()
         else
-            errorLabel.Text = "❌ Неверный ключ!"
+            errorLabel.Text = message
             errorLabel.TextColor3 = Color3.fromRGB(255, 50, 50)
             codeBox.Text = ""
             task.wait(1.5)
@@ -217,9 +302,9 @@ local function CreateLoginGUI()
         end
     end
 
-    confirmBtn.MouseButton1Click:Connect(CheckEnteredKey)
+    confirmBtn.MouseButton1Click:Connect(CheckKey)
     codeBox.FocusLost:Connect(function(enterPressed)
-        if enterPressed then CheckEnteredKey() end
+        if enterPressed then CheckKey() end
     end)
 end
 
