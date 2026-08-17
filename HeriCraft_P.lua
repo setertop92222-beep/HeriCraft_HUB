@@ -26,7 +26,7 @@ local API_URL = "https://api.github.com/repos/" .. REPO_OWNER .. "/" .. REPO_NAM
 
 -- ============================================
 -- ============================================
--- ФУНКЦИЯ BASE64 (СВОЯ)
+-- ФУНКЦИЯ BASE64
 -- ============================================
 -- ============================================
 
@@ -48,6 +48,23 @@ local function base64Encode(data)
         result = result .. table.concat(chars)
     end
     return result
+end
+
+-- ============================================
+-- УНИВЕРСАЛЬНЫЙ HTTP-ЗАПРОС
+-- ============================================
+
+local function httpRequest(options)
+    if syn and syn.request then
+        return syn.request(options)
+    end
+    if request then
+        return request(options)
+    end
+    if http and http.request then
+        return http.request(options)
+    end
+    error("No HTTP request method available")
 end
 
 -- ============================================
@@ -89,14 +106,13 @@ end
 
 -- ============================================
 -- ============================================
--- ФУНКЦИЯ СОХРАНЕНИЯ (ИСПРАВЛЕННАЯ)
+-- ФУНКЦИЯ СОХРАНЕНИЯ
 -- ============================================
 -- ============================================
 
 local function UpdateKeysOnGitHub(newKeysData)
     local newContent = "return {\n"
     for _, k in ipairs(newKeysData) do
-        -- Убедимся, что все поля есть
         local key = k.key or ""
         local maxAct = k.max_activations or 1
         newContent = newContent .. "    { key = \"" .. key .. "\", max_activations = " .. maxAct .. ", hwids = {"
@@ -125,8 +141,8 @@ local function UpdateKeysOnGitHub(newKeysData)
         ["Content-Type"] = "application/json"
     }
     
-    local updateSuccess, updateResult = pcall(function()
-        return syn.request({
+    local success, result = pcall(function()
+        return httpRequest({
             Url = API_URL,
             Method = "PUT",
             Headers = headers,
@@ -134,11 +150,11 @@ local function UpdateKeysOnGitHub(newKeysData)
         })
     end)
     
-    if updateSuccess then
+    if success then
         print("✅ Файл обновлён на GitHub!")
         return true
     else
-        print("❌ Ошибка обновления: " .. tostring(updateResult))
+        print("❌ Ошибка обновления: " .. tostring(result))
         return false
     end
 end
