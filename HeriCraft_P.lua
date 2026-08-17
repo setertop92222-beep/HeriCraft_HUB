@@ -26,11 +26,12 @@ local API_URL = "https://api.github.com/repos/" .. REPO_OWNER .. "/" .. REPO_NAM
 
 -- ============================================
 -- ============================================
--- ФУНКЦИЯ BASE64 (СВОЯ, ТАК КАК В ROBOX ЕЁ НЕТ)
+-- ФУНКЦИЯ BASE64 (СВОЯ)
 -- ============================================
 -- ============================================
 
 local function base64Encode(data)
+    if not data or data == "" then return "" end
     local b64chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/"
     local result = ""
     for i = 1, #data, 3 do
@@ -88,15 +89,17 @@ end
 
 -- ============================================
 -- ============================================
--- ФУНКЦИЯ СОХРАНЕНИЯ (С ИСПОЛЬЗОВАНИЕМ СВОЕГО BASE64)
+-- ФУНКЦИЯ СОХРАНЕНИЯ (ИСПРАВЛЕННАЯ)
 -- ============================================
 -- ============================================
 
 local function UpdateKeysOnGitHub(newKeysData)
     local newContent = "return {\n"
     for _, k in ipairs(newKeysData) do
-        local hwidStr = k.hwid or ""
-        newContent = newContent .. "    { key = \"" .. k.key .. "\", max_activations = " .. (k.max_activations or 1) .. ", hwids = {"
+        -- Убедимся, что все поля есть
+        local key = k.key or ""
+        local maxAct = k.max_activations or 1
+        newContent = newContent .. "    { key = \"" .. key .. "\", max_activations = " .. maxAct .. ", hwids = {"
         if type(k.hwids) == "table" and #k.hwids > 0 then
             for i, h in ipairs(k.hwids) do
                 if i > 1 then newContent = newContent .. ", " end
@@ -185,7 +188,7 @@ local function CheckAndActivateKey(inputKey, hwid)
         return false, "❌ Ключ не найден!"
     end
     
-    -- 2. Проверяем, не активировал ли игрок уже другой ключ (в текущих данных)
+    -- 2. Проверяем, не активировал ли игрок уже другой ключ
     local hasKey, activatedKey = HasActivatedKey(hwid, KeysData)
     if hasKey then
         if activatedKey == inputKey then
