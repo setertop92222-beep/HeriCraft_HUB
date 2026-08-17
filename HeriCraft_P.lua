@@ -1,5 +1,5 @@
 -- ============================================
--- HERRICRAFT HUB - МЕНЮ ВХОДА С HWID (ИСПРАВЛЕННЫЙ)
+-- HERRICRAFT HUB - МЕНЮ ВХОДА С HWID
 -- ============================================
 
 local Players = game:GetService("Players")
@@ -23,6 +23,31 @@ local BRANCH = "main"
 
 local KEYS_URL = "https://raw.githubusercontent.com/" .. REPO_OWNER .. "/" .. REPO_NAME .. "/" .. BRANCH .. "/" .. FILE_PATH
 local API_URL = "https://api.github.com/repos/" .. REPO_OWNER .. "/" .. REPO_NAME .. "/contents/" .. FILE_PATH
+
+-- ============================================
+-- ============================================
+-- ФУНКЦИЯ BASE64 (СВОЯ, ТАК КАК В ROBOX ЕЁ НЕТ)
+-- ============================================
+-- ============================================
+
+local function base64Encode(data)
+    local b64chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/"
+    local result = ""
+    for i = 1, #data, 3 do
+        local a, b, c = string.byte(data, i, i+2)
+        local n = (a or 0) * 0x10000 + (b or 0) * 0x100 + (c or 0)
+        local chars = {}
+        for j = 1, 4 do
+            local shift = (4 - j) * 6
+            local index = math.floor(n / 2^shift) % 64
+            chars[j] = b64chars:sub(index+1, index+1)
+        end
+        if not b then chars[3] = "=" end
+        if not c then chars[4] = "=" end
+        result = result .. table.concat(chars)
+    end
+    return result
+end
 
 -- ============================================
 -- ФУНКЦИИ ДЛЯ РАБОТЫ С GITHUB
@@ -63,7 +88,7 @@ end
 
 -- ============================================
 -- ============================================
--- ФУНКЦИЯ СОХРАНЕНИЯ (СОЗДАЁТ НОВЫЙ КОНТЕНТ)
+-- ФУНКЦИЯ СОХРАНЕНИЯ (С ИСПОЛЬЗОВАНИЕМ СВОЕГО BASE64)
 -- ============================================
 -- ============================================
 
@@ -87,7 +112,7 @@ local function UpdateKeysOnGitHub(newKeysData)
     
     local payload = {
         message = "Обновление HWID",
-        content = HttpService:Base64Encode(newContent),
+        content = base64Encode(newContent),
         sha = sha,
         branch = BRANCH
     }
@@ -127,7 +152,7 @@ end
 
 -- ============================================
 -- ============================================
--- ПРОВЕРКА: ЕСТЬ ЛИ У ИГРОКА УЖЕ АКТИВИРОВАННЫЙ КЛЮЧ
+-- ПРОВЕРКА И АКТИВАЦИЯ
 -- ============================================
 -- ============================================
 
@@ -144,10 +169,6 @@ local function HasActivatedKey(hwid, data)
     return false, nil
 end
 
--- ============================================
--- ПОИСК КЛЮЧА
--- ============================================
-
 local function FindKeyData(key, data)
     for _, k in ipairs(data) do
         if k.key == key then
@@ -156,12 +177,6 @@ local function FindKeyData(key, data)
     end
     return nil
 end
-
--- ============================================
--- ============================================
--- ОСНОВНАЯ ФУНКЦИЯ ПРОВЕРКИ И АКТИВАЦИИ
--- ============================================
--- ============================================
 
 local function CheckAndActivateKey(inputKey, hwid)
     -- 1. Проверяем, есть ли ключ
@@ -173,22 +188,19 @@ local function CheckAndActivateKey(inputKey, hwid)
     -- 2. Проверяем, не активировал ли игрок уже другой ключ (в текущих данных)
     local hasKey, activatedKey = HasActivatedKey(hwid, KeysData)
     if hasKey then
-        -- Если это тот же ключ, то просто проверяем доступ
         if activatedKey == inputKey then
-            -- Проверяем, есть ли HWID в этом ключе
             for _, h in ipairs(keyData.hwids or {}) do
                 if h == hwid then
                     return true, "✅ Доступ разрешён!"
                 end
             end
-            -- Если HWID нет (странно), но он числится за этим ключом, значит что-то пошло не так
             return false, "❌ Ошибка! Свяжитесь с разработчиком."
         else
             return false, "❌ Ты уже активировал ключ! (только 1 ключ на устройство)"
         end
     end
     
-    -- 3. Проверяем, есть ли место в ключе
+    -- 3. Проверяем, есть ли место
     local currentActivations = 0
     if keyData.hwids then
         currentActivations = #keyData.hwids
@@ -201,7 +213,7 @@ local function CheckAndActivateKey(inputKey, hwid)
         return false, "❌ Все места заняты! (максимум " .. maxActivations .. " активаций)"
     end
     
-    -- 4. Проверяем, не активирован ли уже этот ключ на этом устройстве (на случай, если HWID уже есть в этом ключе)
+    -- 4. Проверяем, не активирован ли уже этот ключ на этом устройстве
     if keyData.hwids then
         for _, h in ipairs(keyData.hwids) do
             if h == hwid then
@@ -210,7 +222,7 @@ local function CheckAndActivateKey(inputKey, hwid)
         end
     end
     
-    -- 5. Активируем (создаём копию данных для отправки на GitHub)
+    -- 5. Активируем (создаём копию данных)
     local newKeysData = {}
     for _, k in ipairs(KeysData) do
         local newK = {
@@ -226,7 +238,6 @@ local function CheckAndActivateKey(inputKey, hwid)
         table.insert(newKeysData, newK)
     end
     
-    -- Находим наш ключ в новой копии и добавляем HWID
     local newKeyData = FindKeyData(inputKey, newKeysData)
     if newKeyData then
         if not newKeyData.hwids then
@@ -237,13 +248,13 @@ local function CheckAndActivateKey(inputKey, hwid)
         return false, "❌ Ошибка! Ключ не найден в копии."
     end
     
-    -- 6. Пытаемся сохранить на GitHub
+    -- 6. Сохраняем на GitHub
     local success = UpdateKeysOnGitHub(newKeysData)
     if not success then
         return false, "❌ Ошибка сохранения на GitHub! Попробуйте позже."
     end
     
-    -- 7. Если успешно, обновляем локальные данные
+    -- 7. Обновляем локальные данные
     KeysData = newKeysData
     
     local remaining = maxActivations - currentActivations - 1
@@ -255,7 +266,7 @@ end
 -- ============================================
 
 local function LoadDeviceMenu()
-    local url = "https://raw.githubusercontent.com/" .. REPO_OWNER .. "/" .. REPO_NAME .. "/" .. BRANCH .. "/device.lua"
+    local url = "https://raw.githubusercontent.com/" .. REPO_OWNER .. "/" .. REPO_NAME .. "/" .. BRANCH .. "/devase.lua"
     local success, result = pcall(function()
         return game:HttpGet(url)
     end)
@@ -403,7 +414,6 @@ local function CreateLoginGUI()
             return
         end
         
-        -- Обновляем данные с GitHub перед каждой проверкой
         LoadKeysFromGitHub()
         
         local access, message = CheckAndActivateKey(inputKey, hwid)
