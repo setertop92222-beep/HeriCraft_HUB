@@ -1,5 +1,5 @@
 -- ============================================
--- HERRICRAFT HUB - МЕНЮ ВХОДА С HWID
+-- HERRICRAFT HUB - МЕНЮ ВХОДА С HWID (ИСПРАВЛЕННЫЙ)
 -- ============================================
 
 local Players = game:GetService("Players")
@@ -61,12 +61,17 @@ local function GetFileSHA()
     return data.sha
 end
 
-local function UpdateKeysOnGitHub()
+-- ============================================
+-- ============================================
+-- ФУНКЦИЯ СОХРАНЕНИЯ (СОЗДАЁТ НОВЫЙ КОНТЕНТ)
+-- ============================================
+-- ============================================
+
+local function UpdateKeysOnGitHub(newKeysData)
     local newContent = "return {\n"
-    for _, k in ipairs(KeysData) do
+    for _, k in ipairs(newKeysData) do
         local hwidStr = k.hwid or ""
         newContent = newContent .. "    { key = \"" .. k.key .. "\", max_activations = " .. (k.max_activations or 1) .. ", hwids = {"
-        
         if type(k.hwids) == "table" and #k.hwids > 0 then
             for i, h in ipairs(k.hwids) do
                 if i > 1 then newContent = newContent .. ", " end
@@ -122,12 +127,12 @@ end
 
 -- ============================================
 -- ============================================
--- ПРОВЕРКА И АКТИВАЦИЯ
+-- ПРОВЕРКА: ЕСТЬ ЛИ У ИГРОКА УЖЕ АКТИВИРОВАННЫЙ КЛЮЧ
 -- ============================================
 -- ============================================
 
-local function HasActivatedKey(hwid)
-    for _, keyData in ipairs(KeysData) do
+local function HasActivatedKey(hwid, data)
+    for _, keyData in ipairs(data) do
         if keyData.hwids then
             for _, h in ipairs(keyData.hwids) do
                 if h == hwid then
@@ -139,8 +144,12 @@ local function HasActivatedKey(hwid)
     return false, nil
 end
 
-local function FindKeyData(key)
-    for _, k in ipairs(KeysData) do
+-- ============================================
+-- ПОИСК КЛЮЧА
+-- ============================================
+
+local function FindKeyData(key, data)
+    for _, k in ipairs(data) do
         if k.key == key then
             return k
         end
@@ -148,20 +157,38 @@ local function FindKeyData(key)
     return nil
 end
 
+-- ============================================
+-- ============================================
+-- ОСНОВНАЯ ФУНКЦИЯ ПРОВЕРКИ И АКТИВАЦИИ
+-- ============================================
+-- ============================================
+
 local function CheckAndActivateKey(inputKey, hwid)
     -- 1. Проверяем, есть ли ключ
-    local keyData = FindKeyData(inputKey)
+    local keyData = FindKeyData(inputKey, KeysData)
     if not keyData then
         return false, "❌ Ключ не найден!"
     end
     
-    -- 2. Проверяем, не активировал ли игрок уже другой ключ
-    local hasKey, activatedKey = HasActivatedKey(hwid)
+    -- 2. Проверяем, не активировал ли игрок уже другой ключ (в текущих данных)
+    local hasKey, activatedKey = HasActivatedKey(hwid, KeysData)
     if hasKey then
-        return false, "❌ Ты уже активировал ключ! (только 1 ключ на устройство)"
+        -- Если это тот же ключ, то просто проверяем доступ
+        if activatedKey == inputKey then
+            -- Проверяем, есть ли HWID в этом ключе
+            for _, h in ipairs(keyData.hwids or {}) do
+                if h == hwid then
+                    return true, "✅ Доступ разрешён!"
+                end
+            end
+            -- Если HWID нет (странно), но он числится за этим ключом, значит что-то пошло не так
+            return false, "❌ Ошибка! Свяжитесь с разработчиком."
+        else
+            return false, "❌ Ты уже активировал ключ! (только 1 ключ на устройство)"
+        end
     end
     
-    -- 3. Проверяем, есть ли место
+    -- 3. Проверяем, есть ли место в ключе
     local currentActivations = 0
     if keyData.hwids then
         currentActivations = #keyData.hwids
@@ -174,7 +201,7 @@ local function CheckAndActivateKey(inputKey, hwid)
         return false, "❌ Все места заняты! (максимум " .. maxActivations .. " активаций)"
     end
     
-    -- 4. Проверяем, не активирован ли уже этот ключ на этом устройстве
+    -- 4. Проверяем, не активирован ли уже этот ключ на этом устройстве (на случай, если HWID уже есть в этом ключе)
     if keyData.hwids then
         for _, h in ipairs(keyData.hwids) do
             if h == hwid then
@@ -183,16 +210,41 @@ local function CheckAndActivateKey(inputKey, hwid)
         end
     end
     
-    -- 5. Активируем
-    if not keyData.hwids then
-        keyData.hwids = {}
+    -- 5. Активируем (создаём копию данных для отправки на GitHub)
+    local newKeysData = {}
+    for _, k in ipairs(KeysData) do
+        local newK = {
+            key = k.key,
+            max_activations = k.max_activations or 1,
+            hwids = {}
+        }
+        if k.hwids then
+            for _, h in ipairs(k.hwids) do
+                table.insert(newK.hwids, h)
+            end
+        end
+        table.insert(newKeysData, newK)
     end
-    table.insert(keyData.hwids, hwid)
     
-    local success = UpdateKeysOnGitHub()
-    if not success then
-        return false, "❌ Ошибка сохранения на GitHub!"
+    -- Находим наш ключ в новой копии и добавляем HWID
+    local newKeyData = FindKeyData(inputKey, newKeysData)
+    if newKeyData then
+        if not newKeyData.hwids then
+            newKeyData.hwids = {}
+        end
+        table.insert(newKeyData.hwids, hwid)
+    else
+        return false, "❌ Ошибка! Ключ не найден в копии."
     end
+    
+    -- 6. Пытаемся сохранить на GitHub
+    local success = UpdateKeysOnGitHub(newKeysData)
+    if not success then
+        return false, "❌ Ошибка сохранения на GitHub! Попробуйте позже."
+    end
+    
+    -- 7. Если успешно, обновляем локальные данные
+    KeysData = newKeysData
     
     local remaining = maxActivations - currentActivations - 1
     return true, "✅ Ключ активирован! Осталось мест: " .. remaining
@@ -350,6 +402,9 @@ local function CreateLoginGUI()
             errorLabel.Text = ""
             return
         end
+        
+        -- Обновляем данные с GitHub перед каждой проверкой
+        LoadKeysFromGitHub()
         
         local access, message = CheckAndActivateKey(inputKey, hwid)
         
